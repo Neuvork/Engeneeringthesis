@@ -1,5 +1,5 @@
 import cupy as cp
-from kernels import dot_cuda_paralell, max_pooling_cuda_paralell, convolve_cuda_paralell
+from Engeneeringthesis.kernels import dot_cuda_paralell, max_pooling_cuda_paralell, convolve_cuda_paralell
 class Neural_Network:
 
   def parse_input(self,given_layers,input_size,num_nets):
