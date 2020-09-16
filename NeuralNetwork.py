@@ -32,14 +32,10 @@ class Neural_Network:
       del lista[0]
 
   def parse_input(self,given_layers,input_size,num_nets):
-    layers,locs,scales = [],[],[]
-    input_size = (1,input_size[0],input_size[1])
+    layers = []
+    input_size = (input_size[0],input_size[1],input_size[2])
 
     for layer in given_layers:
-      print(layer)
-      print(layer[2])
-      locs.append(layer[2][0])
-      scales.append(layer[2][1])
 
       if layer[0] == 'conv':
         layers.append((layer[0],[num_nets,layer[1][0],input_size[0],layer[1][1],layer[1][2]]))
@@ -54,26 +50,42 @@ class Neural_Network:
         layers.append((layer[0],[num_nets,input_size,layer[1]]))
         input_size = layer[1]
 
-    return layers,locs,scales
+    return layers
 
 
-  def __init__(self,num_nets,input_size,given_layers):
+  def __init__(self,num_nets,input_size,given_layers,loc=0,scale=1):#after init in neuronized state
     self.mempool = cp.get_default_memory_pool()
-    self.pinned_mempool = cp.get_default_pinned_memory_pool()
+    self.pinned_mempool = cp.get_default_memory_pool()
     self.population_size = num_nets
     self.input_size = input_size
     self.input_layers = given_layers
-    self.layers = []
-    print("GIVEN LAYERE  BEFORE: ", given_layers)
-    given_layers,locs,scales = self.parse_input(given_layers,input_size,num_nets)
-    print("GIVEN LAYERE AFTER: ", given_layers)
-    print("locs: ", locs)
-    print("scales: ", scales)
-    for layer,loc,scale in zip(given_layers,locs,scales):
+    self.vectorized = False #if NN is in state of being vectorized or neuronized
+    self.layers = [] #empty if in vectorized,neural network if in neuronized
+    self.vector = None #empty if in neuronized, vector if in vectorized
+    self.layers_shapes = self.parse_input(given_layers,input_size,num_nets) #remember the shape of network,and parse user input
+    for layer in self.layers_shapes:
       if layer[0] == 'conv':
         self.layers.append(['conv', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])   #layer[0] -> conv ; layer[1] ->[num_nets, out_channel, in_channel, filter_wdth, filter_height]
       if layer[0] == 'linear':
         self.layers.append(['linear', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])
+
+  def sample(self,covariance_matrix,sigma):
+    #concat sampled vectors and parse them
+    return None
+
+  def parse_from_vectors(self):
+    numbers = []
+    start = 0
+    for layer in self.layers_shapes:
+      numbers.append(layer.flat)
+    for layer in self.layers_shapes:
+      
+
+  def return_choosen_ones(self,indices):
+    individuals = []
+    for index in indices:
+      individuals.append(get_individual(index))
+    return individual
 
   def move_to_cpu(self):
     for layer in self.layers:
@@ -119,5 +131,3 @@ class Neural_Network:
     for layer in self.layers:
       result_individual.append(layer[1][i].copy())
     return result_individual
-
-  

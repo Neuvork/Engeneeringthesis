@@ -9,11 +9,9 @@ DEBUG_MODE = no_debug
 class Sigmas_Neural_Network:
     def parse_input(self,given_layers,input_size,num_nets):
       layers,locs,scales = [],[],[]
-      input_size = (1,input_size[0],input_size[1])
+      input_size = (input_size[0],input_size[1],input_size[2])
 
       for layer in given_layers:
-        print(layer)
-        print(layer[2])
         locs.append(layer[2][0])
         scales.append(layer[2][1])
 
@@ -31,27 +29,24 @@ class Sigmas_Neural_Network:
           input_size = layer[1]
 
       return layers,locs,scales
-    
-    
+
+
     def __init__(self,num_nets,input_size,given_layers):
         self.sigmas_size = num_nets
         self.input_size = input_size
         self.input_layers = given_layers
         self.layers_sigmas = []
         given_layers,locs,scales = self.parse_input(given_layers,input_size,num_nets)
-        print("GIVEN LAYERS AFTER: ", given_layers)
-        print("locs: ", locs)
-        print("scales: ", scales)
         for layer,loc,scale in zip(given_layers,locs,scales):
             if layer[0] == 'conv':
                 self.layers_sigmas.append(['conv', cp.abs(cp.random.normal(loc = loc, scale = scale, size = (layer[1]))).astype(cp.float32)])   #layer[0] -> conv ; layer[1] ->[num_nets, out_channel, in_channel, filter_wdth, filter_height]
             if layer[0] == 'linear':
                 self.layers_sigmas.append(['linear', cp.abs(cp.random.normal(loc = loc, scale = scale, size = (layer[1]))).astype(cp.float32)])
-  
+
     def list_memory_clear(self, lista):
       for i in range(len(lista)):
         del lista[0]
-    
+
     def replace_individual(self, i, individual):
         i = int(i)
         for j in range(len(self.layers_sigmas)):
