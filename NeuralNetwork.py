@@ -1,6 +1,15 @@
 import cupy as cp
+no_debug = 1
+basic_debug_mode = 2
+super_debug_mode = 3
+only_interesting = 5
+DEBUG_MODE = only_interesting
 from Engeneeringthesis.kernels import dot_cuda_paralell, max_pooling_cuda_paralell, convolve_cuda_paralell
 class Neural_Network:
+
+  def list_memory_clear(self, lista):
+    for i in range(len(lista)):
+      del lista[0]
 
   def parse_input(self,given_layers,input_size,num_nets):
     layers,locs,scales = [],[],[]
@@ -29,6 +38,9 @@ class Neural_Network:
 
 
   def __init__(self,num_nets,input_size,given_layers):
+    self.population_size = num_nets
+    self.input_size = input_size
+    self.input_layers = given_layers
     self.layers = []
     print("GIVEN LAYERE  BEFORE: ", given_layers)
     given_layers,locs,scales = self.parse_input(given_layers,input_size,num_nets)
@@ -75,7 +87,7 @@ class Neural_Network:
     i = int(i)
     for j in range(len(self.layers)):
       self.layers[j][1][i] = individual[j]
-      list_memory_clear(individual)
+      self.list_memory_clear(individual)
     del individual
 
 

@@ -13,7 +13,7 @@ dot_kernel_paralell = cp.RawKernel(
       for(int i = 0; i < input_size; i++)
       {
         value_for_thread += inputxd[i] * lin[network_id * input_size * output_size + i*output_size + index_in_output];
-
+      }
       outputxd[network_id * output_size + index_in_output] = value_for_thread;
 
     }

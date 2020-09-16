@@ -1,5 +1,11 @@
 import cupy as cp
 import numpy as np
+no_debug = 1
+basic_debug_mode = 2
+super_debug_mode = 3
+only_interesting = 5
+DEBUG_MODE = no_debug
+
 class Sigmas_Neural_Network:
     def parse_input(self,given_layers,input_size,num_nets):
       layers,locs,scales = [],[],[]
@@ -28,6 +34,9 @@ class Sigmas_Neural_Network:
     
     
     def __init__(self,num_nets,input_size,given_layers):
+        self.sigmas_size = num_nets
+        self.input_size = input_size
+        self.input_layers = given_layers
         self.layers_sigmas = []
         given_layers,locs,scales = self.parse_input(given_layers,input_size,num_nets)
         print("GIVEN LAYERS AFTER: ", given_layers)
@@ -39,7 +48,7 @@ class Sigmas_Neural_Network:
             if layer[0] == 'linear':
                 self.layers_sigmas.append(['linear', cp.abs(cp.random.normal(loc = loc, scale = scale, size = (layer[1]))).astype(cp.float32)])
   
-    def list_memory_clear(lista):
+    def list_memory_clear(self, lista):
       for i in range(len(lista)):
         del lista[0]
     
