@@ -1,4 +1,5 @@
 import cupy as cp
+import numpy as np
 no_debug = 1
 basic_debug_mode = 2
 super_debug_mode = 3
@@ -6,6 +7,25 @@ only_interesting = 5
 DEBUG_MODE = only_interesting
 from Engeneeringthesis.kernels import dot_cuda_paralell, max_pooling_cuda_paralell, convolve_cuda_paralell
 class Neural_Network:
+
+  def cuda_memory_clear():
+    print("_total_bytes_before", self.mempool.total_bytes())
+    self.mempool.free_all_blocks()
+    self.pinned_mempool.free_all_blocks()          
+    print("_total_bytes_after", self.mempool.total_bytes()) 
+
+  def parse_to_vector(): # every individual is getting trapnsfered to vector
+    ret_list = [np.array([])] * self.num_nets
+    for layer in self.layers:
+      i = 0
+      for individual in layer:
+        ret_list[i] = np.concatenate((ret_list[i], layer[1].flatten().asnumpy()))
+        i += 1 
+    self.layers = []
+    cuda_memory_clear()
+    print("__parse_to_vector before move to cuda")
+    self.vectorized = cp.array(ret_list)
+    print("__parse_to_vector, self.vectorized")
 
   def list_memory_clear(self, lista):
     for i in range(len(lista)):
@@ -38,6 +58,8 @@ class Neural_Network:
 
 
   def __init__(self,num_nets,input_size,given_layers):
+    self.mempool = cp.get_default_memory_pool()
+    self.pinned_mempool = cp.get_default_pinned_memory_pool()
     self.population_size = num_nets
     self.input_size = input_size
     self.input_layers = given_layers
