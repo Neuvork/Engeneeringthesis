@@ -61,7 +61,7 @@ class Neural_Network:
     self.input_layers = given_layers
     self.vectorized = False #if NN is in state of being vectorized or neuronized
     self.layers = [] #empty if in vectorized,neural network if in neuronized
-    self.vector = None #empty if in neuronized, vector if in vectorized
+    self.matrix = None #empty if in neuronized, vector if in vectorized
     self.layers_shapes = self.parse_input(given_layers,input_size,num_nets) #remember the shape of network,and parse user input
     for layer in self.layers_shapes:
       if layer[0] == 'conv':
@@ -75,11 +75,15 @@ class Neural_Network:
 
   def parse_from_vectors(self):
     numbers = []
+    self.matrix = self.matrix.asnumpy()
+    for layer in self.layers_shapes:
+      numbers.append(layer[1][1:].size)
     start = 0
-    for layer in self.layers_shapes:
-      numbers.append(layer.flat)
-    for layer in self.layers_shapes:
-      
+    it = 0
+    for number in numbers:
+      self.layers.append(self.layers_shapes[it][0],cp.array(self.matrix[:,start:(start+number)]).reshape(self.layers_shapes[it][1]))
+      it+=1
+    self.matrix = None
 
   def return_choosen_ones(self,indices):
     individuals = []
