@@ -70,6 +70,7 @@ class Neural_Network:
       if layer[0] == 'conv':
         self.layers.append(['conv', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])   #layer[0] -> conv ; layer[1] ->[num_nets, out_channel, in_channel, filter_wdth, filter_height]
       if layer[0] == 'linear':
+
         self.layers.append(['linear', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])  
   
   def sample(self,covariance_matrix, sigma, mean, lam, dimensionality):
@@ -80,21 +81,29 @@ class Neural_Network:
     ret_mat = cp.zeros((lam, dimensionality))
     print("DEBUG_STAMP")
     for i in range(lam):
-      ret_mat[i] = self.multivariate_normal((mean, covariance_matrix * (sigma**2)))
+      ret_mat[i] = cp.random.multivariate_normal(mean, covariance_matrix * (sigma**2))
       #ret_mat[i] = cp.random.multivariate_normal(mean, covariance_matrix * (sigma**2))
       self.cuda_memory_clear()
     print("__sample stop")
     return ret_mat
 
+  def mult(self, l):
+    ret_val = 1
+    for number in l:
+      ret_val *= number
+    return ret_val
+
   def parse_from_vectors(self):
     numbers = []
-    self.matrix = self.matrix.asnumpy()
+    self.matrix = cp.asnumpy(self.matrix)
+    self.cuda_memory_clear()
     for layer in self.layers_shapes:
-      numbers.append(layer[1][1:].size)
+      print(layer[1])
+      numbers.append(self.mult(layer[1][1:]))
     start = 0
     it = 0
     for number in numbers:
-      self.layers.append(self.layers_shapes[it][0],cp.array(self.matrix[:,start:(start+number)]).reshape(self.layers_shapes[it][1]))
+      self.layers.append((self.layers_shapes[it][0],cp.array(self.matrix[:,start:(start+number)]).reshape(self.layers_shapes[it][1])))
       it+=1
     self.matrix = None
     self.vectorized = False
