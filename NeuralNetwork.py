@@ -8,23 +8,26 @@ DEBUG_MODE = only_interesting
 from Engeneeringthesis.kernels import dot_cuda_paralell, max_pooling_cuda_paralell, convolve_cuda_paralell
 class Neural_Network:
 
-  def cuda_memory_clear():
+  def cuda_memory_clear(self):
     print("_total_bytes_before", self.mempool.total_bytes())
     self.mempool.free_all_blocks()
     self.pinned_mempool.free_all_blocks()          
     print("_total_bytes_after", self.mempool.total_bytes()) 
 
-  def parse_to_vector(): # every individual is getting trapnsfered to vector
-    ret_list = [np.array([])] * self.num_nets
+  def parse_to_vector(self, dimensionality): # every individual is getting trapnsfered to vector
+    ret_mat = np.zeros((self.population_size, dimensionality))
+    index = 0
     for layer in self.layers:
       i = 0
-      for individual in layer:
-        ret_list[i] = np.concatenate((ret_list[i], layer[1].flatten().asnumpy()))
+      for individual in layer[1]:
+        ret_mat[i][index:] = cp.asnumpy(individual.flatten())
         i += 1 
+      index += layer[1][0].flatten().size
     self.layers = []
-    cuda_memory_clear()
+    self.cuda_memory_clear()
     print("__parse_to_vector before move to cuda")
-    self.vectorized = cp.array(ret_list)
+    self.matrix = cp.array(ret_mat, dtype = cp.float32)
+    self.vectorized = True
     print("__parse_to_vector, self.vectorized")
 
   def list_memory_clear(self, lista):
@@ -67,11 +70,21 @@ class Neural_Network:
       if layer[0] == 'conv':
         self.layers.append(['conv', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])   #layer[0] -> conv ; layer[1] ->[num_nets, out_channel, in_channel, filter_wdth, filter_height]
       if layer[0] == 'linear':
-        self.layers.append(['linear', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])
-
-  def sample(self,covariance_matrix,sigma):
+        self.layers.append(['linear', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])  
+  
+  def sample(self,covariance_matrix, sigma, mean, lam, dimensionality):
+    print("__sample start")
     #concat sampled vectors and parse them
-    return None
+    if not self.vectorized:
+      self.parse_to_vector(dimensionality)
+    ret_mat = cp.zeros((lam, dimensionality))
+    print("DEBUG_STAMP")
+    for i in range(lam):
+      ret_mat[i] = self.multivariate_normal((mean, covariance_matrix * (sigma**2)))
+      #ret_mat[i] = cp.random.multivariate_normal(mean, covariance_matrix * (sigma**2))
+      self.cuda_memory_clear()
+    print("__sample stop")
+    return ret_mat
 
   def parse_from_vectors(self):
     numbers = []
@@ -84,6 +97,7 @@ class Neural_Network:
       self.layers.append(self.layers_shapes[it][0],cp.array(self.matrix[:,start:(start+number)]).reshape(self.layers_shapes[it][1]))
       it+=1
     self.matrix = None
+    self.vectorized = False
 
   def return_choosen_ones(self,indices):
     individuals = []
