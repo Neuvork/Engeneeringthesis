@@ -14,8 +14,8 @@ class Neural_Network:
     self.pinned_mempool.free_all_blocks()          
     print("_total_bytes_after", self.mempool.total_bytes()) 
 
-  def parse_to_vector(self, dimensionality): # every individual is getting trapnsfered to vector
-    ret_mat = np.zeros((self.population_size, dimensionality))
+  def parse_to_vector(self): # every individual is getting trapnsfered to vector
+    ret_mat = np.zeros((self.population_size, self.dimensionality))
     index = 0
     for layer in self.layers:
       i = 0
@@ -54,6 +54,17 @@ class Neural_Network:
         input_size = layer[1]
 
     return layers
+  
+  def compute_dimensionality(self):
+    print("__compute_dimensionality start")
+    number_of_weights = 0
+    for layer_shape in self.layers_shapes:
+      weights_in_layer = 1
+      for number in layers_shapes[1][1:]:
+        weights_in_layer *= number
+      number_of_weights += weights_in_layer
+    print("__compute_dimensionality stop ", number_of_weights)
+    return number_of_weights
 
 
   def __init__(self,num_nets,input_size,given_layers,loc=0,scale=1):#after init in neuronized state
@@ -66,6 +77,8 @@ class Neural_Network:
     self.layers = [] #empty if in vectorized,neural network if in neuronized
     self.matrix = None #empty if in neuronized, vector if in vectorized
     self.layers_shapes = self.parse_input(given_layers,input_size,num_nets) #remember the shape of network,and parse user input
+    self.dimensionality = self.compute_dimensionality()
+    
     for layer in self.layers_shapes:
       if layer[0] == 'conv':
         self.layers.append(['conv', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])   #layer[0] -> conv ; layer[1] ->[num_nets, out_channel, in_channel, filter_wdth, filter_height]
@@ -73,12 +86,12 @@ class Neural_Network:
 
         self.layers.append(['linear', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])  
   
-  def sample(self,covariance_matrix, sigma, mean, lam, dimensionality):
+  def sample(self,covariance_matrix, sigma, mean, lam):
     print("__sample start")
     #concat sampled vectors and parse them
     if not self.vectorized:
-      self.parse_to_vector(dimensionality)
-    ret_mat = cp.zeros((lam, dimensionality))
+      self.parse_to_vector()
+    ret_mat = cp.zeros((lam, self.dimensionality))
     print("DEBUG_STAMP")
     for i in range(lam):
       ret_mat[i] = cp.random.multivariate_normal(mean, covariance_matrix * (sigma**2))
@@ -150,6 +163,13 @@ class Neural_Network:
       self.layers[j][1][i] = individual[j]
       self.list_memory_clear(individual)
     del individual
+
+  def return_chosen_ones(self, indices):
+    if not self.vectorized:
+      parse_to_vector()
+    return self.matrix[indices]
+
+
 
 
   def get_individual(self, i):
