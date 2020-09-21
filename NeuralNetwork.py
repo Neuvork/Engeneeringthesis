@@ -60,7 +60,7 @@ class Neural_Network:
     number_of_weights = 0
     for layer_shape in self.layers_shapes:
       weights_in_layer = 1
-      for number in layers_shapes[1][1:]:
+      for number in layer_shape[1][1:]:
         weights_in_layer *= number
       number_of_weights += weights_in_layer
     print("__compute_dimensionality stop ", number_of_weights)
@@ -166,7 +166,7 @@ class Neural_Network:
 
   def return_chosen_ones(self, indices):
     if not self.vectorized:
-      parse_to_vector()
+      self.parse_to_vector()
     return self.matrix[indices]
 
 
