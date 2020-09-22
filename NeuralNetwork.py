@@ -15,7 +15,7 @@ class Neural_Network:
     print("_total_bytes_after", self.mempool.total_bytes()) 
 
   def parse_to_vector(self): # every individual is getting trapnsfered to vector
-    ret_mat = np.zeros((self.population_size, self.dimensionality))
+    ret_mat = np.zeros((self.population_size, self.dimensionality),dtype = np.float32)
     index = 0
     for layer in self.layers:
       i = 0
@@ -91,15 +91,21 @@ class Neural_Network:
     self.layers = [] #cleaning previous population
     self.cuda_memory_clear()
     #concat sampled vectors and parse them
-    ret_mat = cp.zeros((lam, self.dimensionality))
+    ret_mat = cp.zeros((lam, self.dimensionality),dtype = cp.float32)
+    L = cp.linalg.cholesky(covariance_matrix*(sigma**2)).astype(cp.float32)
     print("DEBUG_STAMP")
     for i in range(lam):
-      ret_mat[i] = cp.random.multivariate_normal(mean, covariance_matrix * (sigma**2))
+      ret_mat[i] = self.multivariate_cholesky(mean,L)
       #ret_mat[i] = cp.random.multivariate_normal(mean, covariance_matrix * (sigma**2))
       self.cuda_memory_clear()
+    print("__shape of returned vector: ",ret_mat[0].shape)
     print("__sample stop")
     self.matrix = ret_mat
     self.vectorized = True
+
+  def multivariate_cholesky(self,mean,cholesky_covariance):
+    vector = cp.random.normal(loc = 0,scale = 1,size = self.dimensionality,dtype = cp.float32)
+    return cholesky_covariance.dot(vector) + mean
 
   def mult(self, l):
     ret_val = 1
