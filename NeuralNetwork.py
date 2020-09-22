@@ -88,9 +88,9 @@ class Neural_Network:
   
   def sample(self,covariance_matrix, sigma, mean, lam):
     print("__sample start")
+    self.layers = [] #cleaning previous population
+    self.cuda_memory_clear()
     #concat sampled vectors and parse them
-    if not self.vectorized: #throw this out, we want to just replace our population
-      self.parse_to_vector()
     ret_mat = cp.zeros((lam, self.dimensionality))
     print("DEBUG_STAMP")
     for i in range(lam):
@@ -98,8 +98,8 @@ class Neural_Network:
       #ret_mat[i] = cp.random.multivariate_normal(mean, covariance_matrix * (sigma**2))
       self.cuda_memory_clear()
     print("__sample stop")
-    #here we should set self.vectorized = True
-    return ret_mat
+    self.matrix = ret_mat
+    self.vectorized = True
 
   def mult(self, l):
     ret_val = 1
