@@ -125,8 +125,8 @@ class Neural_Network:
   def return_choosen_ones(self,indices):
     individuals = []
     for index in indices:
-      individuals.append(get_individual(index))
-    return individual
+      individuals.append(self.matrix[index])
+    return individuals
 
   def move_to_cpu(self):
     for layer in self.layers:
