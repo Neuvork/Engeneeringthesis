@@ -21,16 +21,6 @@ dot_kernel_paralell = cp.RawKernel(
     'single_dot_kernel_paralell'
 )
 
-def dot_cuda_paralell(single_input, lin):
-  ret_mat = cp.zeros((lin.shape[0], lin.shape[2]), dtype=cp.float32)
-  block_size = (lin.shape[2], 1)
-  grid_size = (lin.shape[0], 1)
-
-  input_size = cp.int32(single_input.shape[0])
-  output_size = cp.int32(lin.shape[2])
-  population_size = cp.int32(lin.shape[0])
-  dot_kernel_paralell(grid_size, block_size, (single_input, lin, ret_mat, population_size, input_size, output_size))
-  return ret_mat  
 
 max_pooling_kernel_paralell = cp.RawKernel(
     r'''
@@ -90,6 +80,30 @@ conv_kernel_paralell = cp.RawKernel(
     'conv_kernel_paralell'
 )
 
+dot_kernel_paralell_many_inputs = cp.RawKernel(
+    r'''
+    extern "C" __global__
+    void dot_kernel_paralell(float* input, float* lin, float* output, int population_size, int input_size, int output_size)
+    {
+      int network_id = blockIdx.x;
+      int index_in_output = threadIdx.x;
+
+      float value_for_thread = 0.;
+
+
+      int index_in_input = network_id*input_size;
+      for(int i = index_in_input; i < index_in_input + input_size; i++)
+      {
+        value_for_thread += input[i] * lin[network_id * input_size * output_size + (i - index_in_input)*output_size + index_in_output];
+      }
+      output[network_id * output_size + index_in_output] = value_for_thread;
+
+    }
+    ''',
+    'dot_kernel_paralell_many_inputs'
+)
+
+
 def max_pooling_cuda_paralell(temp):
     ret_mat = cp.zeros((temp.shape[0], temp.shape[1], int(cp.ceil(temp.shape[2]/2)), int(cp.ceil(temp.shape[3]/2))), dtype = cp.float32)
     block_size = (ret_mat.shape[3],1)
@@ -104,4 +118,28 @@ def convolve_cuda_paralell(temp, conv):
     grid_size =  (ret_mat.shape[0], ret_mat.shape[1], ret_mat.shape[2])
     conv_kernel_paralell(grid_size, block_size, (ret_mat, temp, conv,temp.shape[1], temp.shape[2], temp.shape[3], conv.shape[1], conv.shape[2], 3))
     return ret_mat
+
+
+def dot_cuda_paralell_many_inputs(input, lin):
+  ret_mat = cp.zeros((lin.shape[0], lin.shape[2]), dtype=cp.float32)
+  block_size = (lin.shape[2], 1)
+  grid_size = (lin.shape[0], 1)
+
+  input_size = cp.int32(input.shape[1])
+  output_size = cp.int32(lin.shape[2])
+  population_size = cp.int32(lin.shape[0])
+  dot_kernel_paralell(grid_size, block_size, (input, lin, ret_mat, population_size, input_size, output_size))
+  return ret_mat  
+
+
+def dot_cuda_paralell(single_input, lin):
+  ret_mat = cp.zeros((lin.shape[0], lin.shape[2]), dtype=cp.float32)
+  block_size = (lin.shape[2], 1)
+  grid_size = (lin.shape[0], 1)
+
+  input_size = cp.int32(single_input.shape[0])
+  output_size = cp.int32(lin.shape[2])
+  population_size = cp.int32(lin.shape[0])
+  dot_kernel_paralell(grid_size, block_size, (single_input, lin, ret_mat, population_size, input_size, output_size))
+  return ret_mat 
     
