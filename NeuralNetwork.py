@@ -9,8 +9,10 @@ from Engeneeringthesis.kernels import dot_cuda_paralell, max_pooling_cuda_parale
 class Neural_Network:
 
   def cuda_memory_clear(self):
+    print("_total_bytes_before", self.mempool.total_bytes())
     self.mempool.free_all_blocks()
     self.pinned_mempool.free_all_blocks()          
+    print("_total_bytes_after", self.mempool.total_bytes()) 
 
   def parse_to_vector(self): # every individual is getting trapnsfered to vector
     ret_mat = np.zeros((self.population_size, self.dimensionality),dtype = np.float32)
