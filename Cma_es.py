@@ -2,6 +2,7 @@ import cupy as cp
 import numpy as np
 from Engeneeringthesis.Logs import Logs 
 from Engeneeringthesis.NeuralNetwork import Neural_Network
+from scipy.linalg import sqrtm
 
 mempool = cp.get_default_memory_pool()
 pinned_mempool = cp.get_default_pinned_memory_pool()
@@ -46,20 +47,23 @@ class CMA_ES():
     return updated_mean
 
   def update_isotropic(self,mean_act,mean_prev,c_sigma,mu_w):
-    first_term = (1-c_sigma)*self.isotropic
-    inversed_covariance_matrix = cp.linalg.cholesky(cp.linalg.inv(self.covariance_matrix))
-    test = inversed_covariance_matrix.dot(inversed_covariance_matrix)
-    inv_test = cp.linalg.inv(self.covariance_matrix)
-    second_term = cp.sqrt(1-((1-c_sigma)**2))*cp.sqrt(mu_w)
-    third_term = (cp.array(mean_act)-cp.array(mean_prev))/cp.array(self.sigma)
-    ret_val = first_term + second_term*inversed_covariance_matrix.dot(third_term)
     file = open("LOGS.txt", "a")
-    file.write("\n update_isotropic min" 
-              + str(ret_val.min()) 
-              + " mean: " 
-              + str(ret_val.mean())
-              + " max: "
-              + str(ret_val.max()))
+
+    first_term = (1-c_sigma)*self.isotropic
+
+    inversed_covariance_matrix = cp.linalg.cholesky(cp.linalg.inv(self.covariance_matrix)).astype(cp.float32)
+    #inversed_covariance_matrix = cp.array(sqrtm(cp.asnumpy(cp.linalg.inv(self.covariance_matrix))), dtype = cp.float32)
+    second_term = (cp.sqrt(1-((1-c_sigma)**2))*cp.sqrt(mu_w)).astype(cp.float32)
+    third_term = (cp.array(mean_act, dtype = cp.float32)-cp.array(mean_prev, dtype=cp.float32))/cp.array(self.sigma, dtype=cp.float32)
+    ret_val = first_term + second_term*inversed_covariance_matrix.dot(third_term)
+
+    
+    file.write("\n \n update_isotropic second_term: \n first_part:  " 
+              + str(ret_val[0].dtype) 
+              + ", dtype of cov: "
+              + str(self.covariance_matrix)
+              + "\n\n"
+              )
     file.close()
     self.isotropic = ret_val
   
@@ -100,14 +104,25 @@ class CMA_ES():
 
 
   def update_covariance_matrix(self, c_1, c_mu, c_s, scores, sorted_indices, mu, mean_prev):
+    file = open("LOGS.txt", "a")
+    file.write( " Przed pajacowaniem: dtype: "
+                + str(self.covariance_matrix.dtype)
+                )
     discount_factor = 1 - c_1 - c_mu + c_s
     C1 = discount_factor * self.covariance_matrix
-    C2 = c_1 * (self.anisotropic.reshape(-1,1).dot(self.anisotropic.reshape(1,-1)))
-    C3 = c_mu * self._sum_for_covariance_matrix_update(scores, sorted_indices, mu, mean_prev)
-    file = open("LOGS.txt", "a")
-    file.write("BUMBUM " + str(discount_factor) + "\n")
-    file.close()
+    C2 = (c_1 * (self.anisotropic.reshape(-1,1).dot(self.anisotropic.reshape(1,-1)))).astype(cp.float32)
+    C3 = (c_mu * self._sum_for_covariance_matrix_update(scores, sorted_indices, mu, mean_prev)).astype(cp.float32)
+    
+
     self.covariance_matrix = C1 + C2 + C3
+    file.write( " Po pajacowaniem: dtype: "
+                + str(self.covariance_matrix.dtype)
+                + " C1: " + str(C1.dtype) + ", "
+                + " C2: " + str(C2.dtype) + ", "
+                + " C3: " + str(C3.dtype) 
+                )
+    file.close()
+
 
   def norm(self,vector):
     return cp.sqrt(cp.sum(vector*vector))
