@@ -8,6 +8,27 @@ DEBUG_MODE = only_interesting
 from Engeneeringthesis.kernels import dot_cuda_paralell, max_pooling_cuda_paralell, convolve_cuda_paralell
 class Neural_Network:
 
+
+  def __init__(self,num_nets,input_size,given_layers,loc=0,scale=1, cage_dimensionalities = None):#after init in neuronized state
+    self.mempool = cp.get_default_memory_pool()
+    self.pinned_mempool = cp.get_default_memory_pool()
+    self.population_size = num_nets
+    self.input_size = input_size
+    self.input_layers = given_layers
+    self.vectorized = False #if NN is in state of being vectorized or neuronized
+    self.layers = [] #empty if in vectorized,neural network if in neuronized
+    self.matrix = None #empty if in neuronized, vector if in vectorized
+    self.layers_shapes = self.parse_input(given_layers,input_size,num_nets) #remember the shape of network,and parse user input
+    self.dimensionality = self.compute_dimensionality()
+    self.cage_dimensionalities = cage_dimensionalities
+    for layer in self.layers_shapes:
+      if layer[0] == 'conv':
+        self.layers.append(['conv', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])   #layer[0] -> conv ; layer[1] ->[num_nets, out_channel, in_channel, filter_wdth, filter_height]
+      if layer[0] == 'linear':
+
+        self.layers.append(['linear', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])  
+  
+
   def cuda_memory_clear(self):
     print("_total_bytes_before", self.mempool.total_bytes())
     self.mempool.free_all_blocks()
@@ -67,25 +88,7 @@ class Neural_Network:
     return number_of_weights
 
 
-  def __init__(self,num_nets,input_size,given_layers,loc=0,scale=1):#after init in neuronized state
-    self.mempool = cp.get_default_memory_pool()
-    self.pinned_mempool = cp.get_default_memory_pool()
-    self.population_size = num_nets
-    self.input_size = input_size
-    self.input_layers = given_layers
-    self.vectorized = False #if NN is in state of being vectorized or neuronized
-    self.layers = [] #empty if in vectorized,neural network if in neuronized
-    self.matrix = None #empty if in neuronized, vector if in vectorized
-    self.layers_shapes = self.parse_input(given_layers,input_size,num_nets) #remember the shape of network,and parse user input
-    self.dimensionality = self.compute_dimensionality()
-    
-    for layer in self.layers_shapes:
-      if layer[0] == 'conv':
-        self.layers.append(['conv', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])   #layer[0] -> conv ; layer[1] ->[num_nets, out_channel, in_channel, filter_wdth, filter_height]
-      if layer[0] == 'linear':
 
-        self.layers.append(['linear', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])  
-  
   def sample(self,covariance_matrix, sigma, mean, lam):
     print("__sample start")
     self.layers = [] #cleaning previous population
@@ -95,6 +98,7 @@ class Neural_Network:
     L = cp.linalg.cholesky(covariance_matrix*(sigma**2)).astype(cp.float32)
     print("DEBUG_STAMP")
     for i in range(lam):
+      print("___sample shape: " + str(ret_mat[i].shape))
       ret_mat[i] = self.multivariate_cholesky(mean,L)
       #ret_mat[i] = cp.random.multivariate_normal(mean, covariance_matrix * (sigma**2))
       self.cuda_memory_clear()
@@ -105,7 +109,33 @@ class Neural_Network:
 
   def multivariate_cholesky(self,mean,cholesky_covariance):
     vector = cp.random.normal(loc = 0,scale = 1,size = self.dimensionality,dtype = cp.float32)
-    return cholesky_covariance.dot(vector) + mean
+    ret_val = cholesky_covariance.dot(vector) + mean
+    print("___multivariate_cholesky ret_shape = " + str(ret_val.shape))
+    return ret_val
+
+  def caged_sample(self,covariance_matrices, sigmas, means, lam):
+    print("__cagedsample start")
+    self.layers = [] #cleaning previous population
+    self.cuda_memory_clear()
+    #concat sampled vectors and parse them
+    ret_mat = cp.zeros((lam, self.dimensionality),dtype = cp.float32)
+    L = []
+    for i in range(len(self.cage_dimensionalities)):
+      L.append(cp.linalg.cholesky(covariance_matrices[i]*(sigmas[i]**2)).astype(cp.float32))
+    for i in range(lam):
+      print("___caged shape: ", ret_mat[i].shape, " ", means[0].shape)
+      ret_mat[i] = self.caged_multivariate_cholesky(means,L)
+      self.cuda_memory_clear()
+    self.matrix = ret_mat
+    self.vectorized = True
+  
+  def caged_multivariate_cholesky(self, means, cholesky_covariances):
+    vector = cp.array([])
+    for i in range(len(means)):
+      sampled_vector = cp.random.normal(loc = 0,scale = 1,size = cholesky_covariances[i].shape[0],dtype = cp.float32)
+      vector = cp.concatenate((vector, cholesky_covariances[i].dot(sampled_vector) + means[i]))
+    print("caged_mulativariate shape: ", vector.shape)
+    return vector
 
   def mult(self, l):
     ret_val = 1
@@ -127,12 +157,6 @@ class Neural_Network:
       it+=1
     self.matrix = None
     self.vectorized = False
-
-  def return_choosen_ones(self,indices):
-    individuals = []
-    for index in indices:
-      individuals.append(self.matrix[index])
-    return individuals
 
   def move_to_cpu(self):
     for layer in self.layers:
@@ -171,10 +195,19 @@ class Neural_Network:
       self.list_memory_clear(individual)
     del individual
 
-  def return_chosen_ones(self, indices):
+#self.cage dimensionalities 
+  def return_chosen_ones(self, indices, number_of_cage = None):
     if not self.vectorized:
-      self.parse_to_vector()
-    return self.matrix[indices]
+        self.parse_to_vector()
+    
+    if number_of_cage == None:
+      return self.matrix[indices]
+    else:
+      begin = self.cage_dimensionalities[:number_of_cage].sum()
+      move = self.cage_dimensionalities[number_of_cage]
+      return self.matrix[indices, begin : begin + move]
+      
+      
 
 
 

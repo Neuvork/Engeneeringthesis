@@ -11,13 +11,17 @@ def cuda_memory_clear():
 
 
 class CMA_ES():
-  def __init__(self,population,sigma,evaluate_func, logs):
+  def __init__(self,population,sigma,evaluate_func, logs, dimensionality = None, number_of_cage = None):
     file = open("LOGS.txt",'w')
     file.write("BUM\n")
     file.close()
-    self.dimensionality = population.dimensionality
+    self.dimensionality = None
+    if dimensionality == None:
+      self.dimensionality = population.dimensionality
+    else:
+      self.dimensionality = dimensionality
+    self.number_of_cage = number_of_cage
     self.covariance_matrix = cp.diag(cp.ones(self.dimensionality, dtype = cp.float32))
-    print("____allocated")
     cuda_memory_clear()
     self.population = population
     self.sigma = sigma
@@ -38,10 +42,10 @@ class CMA_ES():
     return 0
 
 
-  def update_mean(self, scores,sorted_indices,population,mu):
+  def update_mean(self, scores,sorted_indices,mu):
     print("___update_mean start")
     interesting_values = sorted_indices[:mu]
-    valuable_individuals = cp.array(self.population.return_chosen_ones(interesting_values))
+    valuable_individuals = cp.array(self.population.return_chosen_ones(interesting_values, self.number_of_cage))
     updated_mean = np.sum(valuable_individuals * self.weights.reshape(-1,1),axis = 0)
     print("___update_mean stop", updated_mean)
     return updated_mean
@@ -64,7 +68,7 @@ class CMA_ES():
               + str(ret_val.max()))
     file.close()
     print("__update isotropic stop, self.isotropic.shape = ", self.isotropic.shape)
-    return ret_val
+    self.isotropic = ret_val
   
   def compute_cs(self, alpha, c_1, c_covariance):
     print("__compute_cs start")
@@ -94,12 +98,12 @@ class CMA_ES():
                 + " max: " + str(true_ret_val.max()))
     file.close()
     print("__update_anisotropic stop")
-    return true_ret_val
+    self.anisotropic = true_ret_val
   
   def _sum_for_covariance_matrix_update(self, scores, sorted_indices, mu, mean_prev): #jakas almbda potrzebna chyba
     print("___sum_for_covariance_matrix_update start")
     interesting_values = sorted_indices[:mu]
-    valuable_individuals = cp.array(self.population.return_chosen_ones(interesting_values)) 
+    valuable_individuals = cp.array(self.population.return_chosen_ones(interesting_values, self.number_of_cage)) 
     ret_sum = .0
     for i in range(mu):
       ret_sum += self.weights[i] * np.dot((valuable_individuals[i] - mean_prev).reshape(-1,1) #result should be matrix!!!
@@ -117,7 +121,7 @@ class CMA_ES():
     C3 = c_mu * self._sum_for_covariance_matrix_update(scores, sorted_indices, mu, mean_prev)
     print("__shapeOfALL",C1.shape,C2.shape,C3.shape,C25.shape)
     print("__update_covariance_matrix stop")
-    return C1 + C2 + C3
+    self.covariance_matrix = C1 + C2 + C3
 
   def norm(self,vector):
     return cp.sqrt(cp.sum(vector*vector))
@@ -139,7 +143,7 @@ class CMA_ES():
                 + " temp2: " + str(temp2))
     file.close()
     print("_update_sigma stop")
-    return self.sigma * temp2
+    self.sigma*=temp2
 
 
 
@@ -182,15 +186,15 @@ class CMA_ES():
       mean_prev = mean_act.copy()
       self.population.parse_to_vector()
       print("___bedzie udpate mean")
-      mean_act = self.update_mean(scores,sorted_indices,self.population,mu) #we need to be vectorized here
+      mean_act = self.update_mean(scores,sorted_indices,mu) #we need to be vectorized here
       print("___bedzie logs log")
       self.logs.log([self.covariance_matrix,self.population.matrix,self.sigma,self.isotropic,self.anisotropic,mean_prev,cp.max(scores),mean_act-mean_prev])
       self.logs.plot()
-      self.isotropic = self.update_isotropic(mean_act,mean_prev,c_sigma,mu_w)
+      self.update_isotropic(mean_act,mean_prev,c_sigma,mu_w)
       c_s = self.compute_cs(alpha,c_1,c_covariance)
-      self.anisotropic = self.update_anisotropic(mean_act,mean_prev,mu_w,c_covariance,alpha)
-      self.covariance_matrix = self.update_covariance_matrix(c_1,c_mu,c_s,scores,sorted_indices,mu,mean_prev)
-      self.sigma = self.update_sigma(c_sigma,d_sigma)
+      self.update_anisotropic(mean_act,mean_prev,mu_w,c_covariance,alpha)
+      self.update_covariance_matrix(c_1,c_mu,c_s,scores,sorted_indices,mu,mean_prev)
+      self.update_sigma(c_sigma,d_sigma)
       self.population.sample(self.covariance_matrix, self.sigma, mean_act, lam)
       self.population.parse_from_vectors()
       file = open("LOGS.txt", "a")
