@@ -25,33 +25,27 @@ class CMA_ES():
     cuda_memory_clear()
     self.population = population
     self.sigma = sigma
-    self.isotropic = cp.zeros(self.dimensionality) #check it
-    self.anisotropic = cp.zeros(self.dimensionality) #check it
+    self.isotropic = cp.zeros(self.dimensionality, dtype = cp.float32) #check it
+    self.anisotropic = cp.zeros(self.dimensionality, dtype = cp.float32) #check it
     self.evaluate_func = evaluate_func
     self.weights = 0 #0 is just placeholder
     self.logs = logs
 
   def _indicator_function(self, val, alpha):
-    print("___indicator_function start ", val, alpha)
     if val < alpha * self.dimensionality and val > 0:
-      print("___indicator_function stop ", 1)
       return 1
     else:
-      print("___indicator_function stop ", 0)
       return 0
     return 0
 
 
   def update_mean(self, scores,sorted_indices,mu):
-    print("___update_mean start")
     interesting_values = sorted_indices[:mu]
     valuable_individuals = cp.array(self.population.return_chosen_ones(interesting_values, self.number_of_cage))
     updated_mean = np.sum(valuable_individuals * self.weights.reshape(-1,1),axis = 0)
-    print("___update_mean stop", updated_mean)
     return updated_mean
 
   def update_isotropic(self,mean_act,mean_prev,c_sigma,mu_w):
-    print("__update isotropic start, self.isotropic.shape = ", self.isotropic.shape)
     first_term = (1-c_sigma)*self.isotropic
     inversed_covariance_matrix = cp.linalg.cholesky(cp.linalg.inv(self.covariance_matrix))
     test = inversed_covariance_matrix.dot(inversed_covariance_matrix)
@@ -67,12 +61,9 @@ class CMA_ES():
               + " max: "
               + str(ret_val.max()))
     file.close()
-    print("__update isotropic stop, self.isotropic.shape = ", self.isotropic.shape)
     self.isotropic = ret_val
   
   def compute_cs(self, alpha, c_1, c_covariance):
-    print("__compute_cs start")
-    print("__compute_cs end")
     ret_val = (1 - self._indicator_function(cp.sqrt(cp.sum(self.isotropic ** 2)), alpha)) * c_1 * c_covariance * (2 - c_covariance)
     file = open("LOGS.txt", "a")
     file.write("\n compute_cs: min: " 
@@ -85,7 +76,6 @@ class CMA_ES():
     return ret_val
 
   def update_anisotropic(self, mean_act,mean_prev,mu_w,c_covariance,alpha):
-    print("__update_anisotropic start")
     ret_val = (1 - c_covariance) * self.anisotropic
     ret_val2 = self._indicator_function(self.norm(self.isotropic), alpha)
     ret_val2 *= np.sqrt(1 - (1 - c_covariance ** 2))
@@ -97,38 +87,33 @@ class CMA_ES():
                 + " mean: " + str(true_ret_val.mean())
                 + " max: " + str(true_ret_val.max()))
     file.close()
-    print("__update_anisotropic stop")
     self.anisotropic = true_ret_val
   
   def _sum_for_covariance_matrix_update(self, scores, sorted_indices, mu, mean_prev): #jakas almbda potrzebna chyba
-    print("___sum_for_covariance_matrix_update start")
     interesting_values = sorted_indices[:mu]
-    valuable_individuals = cp.array(self.population.return_chosen_ones(interesting_values, self.number_of_cage)) 
+    valuable_individuals = cp.array(self.population.return_chosen_ones(interesting_values, self.number_of_cage), cp.float32) 
     ret_sum = .0
     for i in range(mu):
       ret_sum += self.weights[i] * np.dot((valuable_individuals[i] - mean_prev).reshape(-1,1) #result should be matrix!!!
                 / self.sigma, ((valuable_individuals[i] - mean_prev).reshape(1,-1) / self.sigma)  )
-    print("___sum_for_covariance_matrix_update stop: ")
     return ret_sum
 
 
   def update_covariance_matrix(self, c_1, c_mu, c_s, scores, sorted_indices, mu, mean_prev):
-    print("__update_covariance_matrix start")
     discount_factor = 1 - c_1 - c_mu + c_s
     C1 = discount_factor * self.covariance_matrix
     C2 = c_1 * (self.anisotropic.reshape(-1,1).dot(self.anisotropic.reshape(1,-1)))
-    C25 = self._sum_for_covariance_matrix_update(scores, sorted_indices, mu, mean_prev)
     C3 = c_mu * self._sum_for_covariance_matrix_update(scores, sorted_indices, mu, mean_prev)
-    print("__shapeOfALL",C1.shape,C2.shape,C3.shape,C25.shape)
-    print("__update_covariance_matrix stop")
+    file = open("LOGS.txt", "a")
+    file.write("BUMBUM " + str(discount_factor) + "\n")
+    file.close()
     self.covariance_matrix = C1 + C2 + C3
 
   def norm(self,vector):
     return cp.sqrt(cp.sum(vector*vector))
 
   def update_sigma(self,c_sigma,d_sigma):
-    print("_update_sigma start")
-    temp = cp.sqrt(self.dimensionality)*(1-(1/(4*self.dimensionality)) + (1/(21*self.dimensionality**2)))
+    temp = cp.sqrt(self.dimensionality, dtype = cp.float32)*(1-(1/(4*self.dimensionality)) + (1/(21*self.dimensionality**2)))
 
     temp2 = cp.exp((c_sigma/d_sigma)*((self.norm(self.isotropic)/temp)-1))
     ret_val = self.sigma * temp2
@@ -140,9 +125,11 @@ class CMA_ES():
                 + " temp: " + str(temp)
                 + " temp2 part one: " + str(cp.exp((c_sigma/d_sigma)))
                 + " temp2 part two: " + str(((self.norm(self.isotropic)/temp)-1))
-                + " temp2: " + str(temp2))
+                + " temp2: " + str(temp2)
+                + " self.sigma: " + str(self.sigma)
+                + " self.new_sigma: " + str(self.sigma * temp2)
+                + " cage_number: " + str(self.number_of_cage))
     file.close()
-    print("_update_sigma stop")
     self.sigma*=temp2
 
 
