@@ -11,7 +11,7 @@ def cuda_memory_clear():
 
 
 class CMA_ES():
-  def __init__(self,population,sigma,evaluate_func):
+  def __init__(self,population,sigma,evaluate_func, logs):
     file = open("LOGS.txt",'w')
     file.write("BUM\n")
     file.close()
@@ -25,9 +25,7 @@ class CMA_ES():
     self.anisotropic = cp.zeros(self.dimensionality) #check it
     self.evaluate_func = evaluate_func
     self.weights = 0 #0 is just placeholder
-    self.logs = Logs([('matrix','covariance'),('population','population'),('number','sigma'),
-                      ('vector','isotropic'),('vector','anisotropic'),('vector','mean'),
-                      ('number','best-score'),['vector','mean diff']])
+    self.logs = logs
 
   def _indicator_function(self, val, alpha):
     print("___indicator_function start ", val, alpha)
