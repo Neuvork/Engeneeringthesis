@@ -44,6 +44,8 @@ class CMA_ES():
     interesting_values = sorted_indices[:mu]
     valuable_individuals = cp.array(self.population.return_chosen_ones(interesting_values, self.number_of_cage))
     updated_mean = np.sum(valuable_individuals * self.weights.reshape(-1,1),axis = 0)
+    file = open("LOGS.txt", "a")
+    file.write("number_of_cage: " + str(self.number_of_cage) +" valueable_individuals: " + str(valuable_individuals))
     return updated_mean
 
   def update_isotropic(self,mean_act,mean_prev,c_sigma,mu_w):
@@ -51,8 +53,8 @@ class CMA_ES():
 
     first_term = (1-c_sigma)*self.isotropic
 
-    inversed_covariance_matrix = cp.linalg.cholesky(cp.linalg.inv(self.covariance_matrix)).astype(cp.float32)
-    #inversed_covariance_matrix = cp.array(sqrtm(cp.asnumpy(cp.linalg.inv(self.covariance_matrix))), dtype = cp.float32)
+    #inversed_covariance_matrix = cp.linalg.cholesky(cp.linalg.inv(self.covariance_matrix)).astype(cp.float32)
+    inversed_covariance_matrix = cp.array(sqrtm(cp.asnumpy(cp.linalg.inv(self.covariance_matrix))), dtype = cp.float32)
     second_term = (cp.sqrt(1-((1-c_sigma)**2))*cp.sqrt(mu_w)).astype(cp.float32)
     third_term = (cp.array(mean_act, dtype = cp.float32)-cp.array(mean_prev, dtype=cp.float32))/cp.array(self.sigma, dtype=cp.float32)
     ret_val = first_term + second_term*inversed_covariance_matrix.dot(third_term)
@@ -60,8 +62,14 @@ class CMA_ES():
     
     file.write("\n \n update_isotropic second_term: \n first_part:  " 
               + str(ret_val[0].dtype) 
-              + ", dtype of cov: "
-              + str(self.covariance_matrix)
+              + ", mean_act: "
+              + str(mean_act)
+              + "\n mean_prev: "
+              + str(mean_prev)
+              + "\n"
+              + str(self.sigma)
+              + "\n sigma: "
+              + str(ret_val)
               + "\n\n"
               )
     file.close()
@@ -87,9 +95,11 @@ class CMA_ES():
     ret_val3 = (mean_act - mean_prev) / self.sigma
     true_ret_val = ret_val + ret_val2 * ret_val3
     file = open("LOGS.txt", "a")
-    file.write("\n Update anisotropic: min: " + str(true_ret_val.min())
-                + " mean: " + str(true_ret_val.mean())
-                + " max: " + str(true_ret_val.max()))
+    file.write("\n Update anisotropic: "
+                + " mean: " + str(ret_val.mean())
+                + " mean2: " + str(ret_val2.mean())
+                + " mean3: " + str(ret_val3.mean())
+                )
     file.close()
     self.anisotropic = true_ret_val
   

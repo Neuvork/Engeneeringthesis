@@ -30,10 +30,8 @@ class Neural_Network:
   
 
   def cuda_memory_clear(self):
-    print("_total_bytes_before", self.mempool.total_bytes())
     self.mempool.free_all_blocks()
     self.pinned_mempool.free_all_blocks()          
-    print("_total_bytes_after", self.mempool.total_bytes()) 
 
   def parse_to_vector(self): # every individual is getting trapnsfered to vector
     ret_mat = np.zeros((self.population_size, self.dimensionality),dtype = np.float32)
@@ -46,10 +44,8 @@ class Neural_Network:
       index += layer[1][0].flatten().size
     self.layers = []
     self.cuda_memory_clear()
-    print("__parse_to_vector before move to cuda")
     self.matrix = cp.array(ret_mat, dtype = cp.float32)
     self.vectorized = True
-    print("__parse_to_vector, self.vectorized")
 
   def list_memory_clear(self, lista):
     for i in range(len(lista)):
@@ -77,44 +73,35 @@ class Neural_Network:
     return layers
   
   def compute_dimensionality(self):
-    print("__compute_dimensionality start")
     number_of_weights = 0
     for layer_shape in self.layers_shapes:
       weights_in_layer = 1
       for number in layer_shape[1][1:]:
         weights_in_layer *= number
       number_of_weights += weights_in_layer
-    print("__compute_dimensionality stop ", number_of_weights)
     return number_of_weights
 
 
 
   def sample(self,covariance_matrix, sigma, mean, lam):
-    print("__sample start")
     self.layers = [] #cleaning previous population
     self.cuda_memory_clear()
     #concat sampled vectors and parse them
     ret_mat = cp.zeros((lam, self.dimensionality),dtype = cp.float32)
     L = cp.linalg.cholesky(covariance_matrix*(sigma**2)).astype(cp.float32)
-    print("DEBUG_STAMP")
     for i in range(lam):
-      print("___sample shape: " + str(ret_mat[i].shape))
       ret_mat[i] = self.multivariate_cholesky(mean,L)
       #ret_mat[i] = cp.random.multivariate_normal(mean, covariance_matrix * (sigma**2))
       self.cuda_memory_clear()
-    print("__shape of returned vector: ",ret_mat[0].shape)
-    print("__sample stop")
     self.matrix = ret_mat
     self.vectorized = True
 
   def multivariate_cholesky(self,mean,cholesky_covariance):
     vector = cp.random.normal(loc = 0,scale = 1,size = self.dimensionality,dtype = cp.float32)
     ret_val = cholesky_covariance.dot(vector) + mean
-    print("___multivariate_cholesky ret_shape = " + str(ret_val.shape))
     return ret_val
 
   def caged_sample(self,covariance_matrices, sigmas, means, lam):
-    print("__cagedsample start")
     self.layers = [] #cleaning previous population
     self.cuda_memory_clear()
     #concat sampled vectors and parse them
@@ -123,9 +110,8 @@ class Neural_Network:
     for i in range(len(self.cage_dimensionalities)):
       L.append(cp.linalg.cholesky(covariance_matrices[i]*(sigmas[i]**2)).astype(cp.float32))
     for i in range(lam):
-      print("___caged shape: ", ret_mat[i].shape, " ", means[0].shape)
       ret_mat[i] = self.caged_multivariate_cholesky(means,L)
-      self.cuda_memory_clear()
+    self.cuda_memory_clear()
     self.matrix = ret_mat
     self.vectorized = True
   
@@ -134,7 +120,6 @@ class Neural_Network:
     for i in range(len(means)):
       sampled_vector = cp.random.normal(loc = 0,scale = 1,size = cholesky_covariances[i].shape[0],dtype = cp.float32)
       vector = cp.concatenate((vector, cholesky_covariances[i].dot(sampled_vector) + means[i]))
-    print("caged_mulativariate shape: ", vector.shape)
     return vector
 
   def mult(self, l):
