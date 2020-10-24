@@ -12,15 +12,18 @@ def cuda_memory_clear():
 
 
 class CMA_ES():
-  def __init__(self,population,sigma,evaluate_func, logs, dimensionality = None, number_of_cage = None):
+  def __init__(self,population,sigma,evaluate_func, logs, dimensionality = None, number_of_cage = None, problem_dimensionality = None):
     file = open("LOGS.txt",'w')
     file.write("BUM\n")
     file.close()
     self.dimensionality = None
+    self.problem_dimensionality = None
     if dimensionality == None:
       self.dimensionality = population.dimensionality
+      self.problem_dimensionality = population.dimensionality
     else:
       self.dimensionality = dimensionality
+      self.problem_dimensionality = problem_dimensionality
     self.number_of_cage = number_of_cage
     self.covariance_matrix = cp.diag(cp.ones(self.dimensionality, dtype = cp.float32))
     cuda_memory_clear()
@@ -138,7 +141,7 @@ class CMA_ES():
     return cp.sqrt(cp.sum(vector*vector))
 
   def update_sigma(self,c_sigma,d_sigma):
-    temp = cp.sqrt(self.dimensionality, dtype = cp.float32)*(1-(1/(4*self.dimensionality)) + (1/(21*self.dimensionality**2)))
+    temp = cp.sqrt(self.problem_dimensionality, dtype = cp.float32)*(1-(1/(4*self.problem_dimensionality)) + (1/(21*self.problem_dimensionality**2)))
 
     temp2 = cp.exp((c_sigma/d_sigma)*((self.norm(self.isotropic)/temp)-1))
     ret_val = self.sigma * temp2
