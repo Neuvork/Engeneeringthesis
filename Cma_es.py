@@ -25,10 +25,11 @@ class CMA_ES():
       self.dimensionality = dimensionality
     self.number_of_cage = number_of_cage
     self.B_matrix = cp.diag(cp.ones(self.dimensionality,dtype = cp.float32))
-    self.D_matrix = cp.ones(self.dimensionality,dtype = cp.float32).reshape(-1,1)
-    self.covariance_matrix = (self.B_matrix.dot(cp.diag(self.D_matrix^2))).dot(self.B_matrix.T)
+    self.D_matrix = cp.ones(self.dimensionality,dtype = cp.float32).reshape(-1,1).flatten()
+    print(self.B_matrix.shape,self.D_matrix.shape)
+    self.covariance_matrix = (self.B_matrix.dot(cp.diag(self.D_matrix**2))).dot(self.B_matrix.T)
     #self.covariance_matrix = cp.diag(cp.ones(self.dimensionality, dtype = cp.float32))
-    self.invert_sqrt_covariance_matrix = (self.B_matrix.dot(cp.diag(self.D_matrix^-1))).dot(self.B_matrix.T)
+    self.invert_sqrt_covariance_matrix = (self.B_matrix.dot(cp.diag(self.D_matrix**-1))).dot(self.B_matrix.T)
     cuda_memory_clear()
     self.population = population
     self.sigma = sigma
@@ -204,6 +205,7 @@ class CMA_ES():
     alpha = 1.5
     #body 
     for i in range(iterations):
+      self._loops_number += 1
       scores = self.evaluate_func(self.population, data)
       print(cp.max(scores))
       sorted_indices = cp.argsort(-scores)
@@ -219,7 +221,7 @@ class CMA_ES():
       self.update_anisotropic(mean_act,mean_prev,mu_w,c_covariance,alpha)
       self.update_covariance_matrix(c_1,c_mu,c_s,scores,sorted_indices,mu,mean_prev)
       self.update_sigma(c_sigma,d_sigma)
-      self.population.sample(self.covariance_matrix, self.sigma, mean_act, lam)
+      self.population.sample(self.B_matrix, self.D_matrix, self.sigma, mean_act, lam)
       self.population.parse_from_vectors()
       file = open("LOGS.txt", "a")
       file.write("\n\n")

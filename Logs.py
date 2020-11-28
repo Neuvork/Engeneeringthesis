@@ -63,7 +63,7 @@ class Logs():
     clear_output()
     for log,it in zip(self.types,np.arange(len(self.types))):
       #idx = (int(np.floor(it/sizes[1])),int(it%sizes[1]))
-      fig = plt.figure(figsize = (24,20), fontsize = 20)
+      fig = plt.figure(figsize = (24,20))
       ax = fig.add_subplot(111)
       if log[0] == 'number':
         ax.plot(np.arange(len(self.logs[it])),self.logs[it])
@@ -76,7 +76,7 @@ class Logs():
         ax.scatter(np.arange(self.logs[it].shape[0]),self.logs[it])
       if log[0] == 'custom':
         self.customs[it](ax, self.logs[it]) 
-      ax.set_title(log[1] + ':',fontsize = 15)
+      ax.set_title(log[1] + ':')
       fig.savefig(self.output_dir[it] + log[1] + str(self.counter))
       plt.show()
     self.counter += 1
