@@ -83,22 +83,22 @@ class Neural_Network:
 
 
 
-  def sample(self,covariance_matrix, sigma, mean, lam):
+  def sample(self,B,D, sigma, mean, lam):
     self.layers = [] #cleaning previous population
     self.cuda_memory_clear()
     #concat sampled vectors and parse them
     ret_mat = cp.zeros((lam, self.dimensionality),dtype = cp.float32)
-    L = cp.linalg.cholesky(covariance_matrix*(sigma**2)).astype(cp.float32)
+    #L = cp.linalg.cholesky(covariance_matrix*(sigma**2)).astype(cp.float32)
     for i in range(lam):
-      ret_mat[i] = self.multivariate_cholesky(mean,L)
+      ret_mat[i] = self.multivariate_cholesky(mean,B,D,sigma)
       #ret_mat[i] = cp.random.multivariate_normal(mean, covariance_matrix * (sigma**2))
       self.cuda_memory_clear()
     self.matrix = ret_mat
     self.vectorized = True
 
-  def multivariate_cholesky(self,mean,cholesky_covariance):
+  def multivariate_cholesky(self,mean,B,D,sigma):
     vector = cp.random.normal(loc = 0,scale = 1,size = self.dimensionality,dtype = cp.float32)
-    ret_val = cholesky_covariance.dot(vector) + mean
+    ret_val = sigma*B.dot(D*vector) + mean
     return ret_val
 
   def caged_sample(self,covariance_matrices, sigmas, means, lam):

@@ -16,13 +16,19 @@ class CMA_ES():
     file = open("LOGS.txt",'w')
     file.write("BUM\n")
     file.close()
+    self._loops_number = 0
+    self.hp_loops_number = 3
     self.dimensionality = None
     if dimensionality == None:
       self.dimensionality = population.dimensionality
     else:
       self.dimensionality = dimensionality
     self.number_of_cage = number_of_cage
-    self.covariance_matrix = cp.diag(cp.ones(self.dimensionality, dtype = cp.float32))
+    self.B_matrix = cp.diag(cp.ones(self.dimensionality,dtype = cp.float32))
+    self.D_matrix = cp.ones(self.dimensionality,dtype = cp.float32).reshape(-1,1)
+    self.covariance_matrix = (self.B_matrix.dot(cp.diag(self.D_matrix^2))).dot(self.B_matrix.T)
+    #self.covariance_matrix = cp.diag(cp.ones(self.dimensionality, dtype = cp.float32))
+    self.invert_sqrt_covariance_matrix = (self.B_matrix.dot(cp.diag(self.D_matrix^-1))).dot(self.B_matrix.T)
     cuda_memory_clear()
     self.population = population
     self.sigma = sigma
@@ -54,10 +60,10 @@ class CMA_ES():
     first_term = (1-c_sigma)*self.isotropic
 
     #inversed_covariance_matrix = cp.linalg.cholesky(cp.linalg.inv(self.covariance_matrix)).astype(cp.float32)
-    inversed_covariance_matrix = cp.array(sqrtm(cp.asnumpy(cp.linalg.inv(self.covariance_matrix))), dtype = cp.float32)
+    #inversed_covariance_matrix = cp.array(sqrtm(cp.asnumpy(cp.linalg.inv(self.covariance_matrix))), dtype = cp.float32)
     second_term = (cp.sqrt(1-((1-c_sigma)**2))*cp.sqrt(mu_w)).astype(cp.float32)
     third_term = (cp.array(mean_act, dtype = cp.float32)-cp.array(mean_prev, dtype=cp.float32))/cp.array(self.sigma, dtype=cp.float32)
-    ret_val = first_term + second_term*inversed_covariance_matrix.dot(third_term)
+    ret_val = first_term + second_term*self.invert_sqrt_covariance_matrix.dot(third_term)
 
     
     file.write("\n \n update_isotropic second_term: \n first_part:  " 
@@ -125,6 +131,12 @@ class CMA_ES():
     
 
     self.covariance_matrix = C1 + C2 + C3
+    if self._loops_number == self.hp_loops_number:
+      self.covariance_matrix = cp.triu(self.covariance_matrix) + cp.triu(self.covariance_matrix,1)
+      self._loops_number = 0
+      self.D_matrix,self.B_matrix = cp.linalg.eigh(self.covariance_matrix)
+      self.D_matrix = cp.sqrt(self.D_matrix)
+      self.invert_sqrt_covariance_matrix = (self.B_matrix.dot(cp.diag(self.D_matrix**-1))).dot(self.B_matrix.T)
     file.write( " Po pajacowaniem: dtype: "
                 + str(self.covariance_matrix.dtype)
                 + " C1: " + str(C1.dtype) + ", "
