@@ -49,10 +49,10 @@ max_pooling_kernel_paralell = cp.RawKernel(
     'max_pooling_kernel_paralell'
 )
 
-conv_kernel_paralell = cp.RawKernel(
+conv_kernel_paralell_many_inputs = cp.RawKernel(
     r'''
     extern "C" __global__
-    void conv_kernel_paralell(float* ret_mat, float* temp, float * conv, int temp_s1, int temp_s2, int temp_s3, int conv_s1, int conv_s2, int filtersize)
+    void conv_kernel_paralell_many_inputs(float* ret_mat, float* temp, float * conv, int temp_s1, int temp_s2, int temp_s3, int conv_s1, int conv_s2, int filtersize)
     {
       int id_network = blockIdx.x; //retmatshape 0
       int i = blockIdx.y; //retmatshape 1 = convshape 1
@@ -77,7 +77,7 @@ conv_kernel_paralell = cp.RawKernel(
       
     }
     ''',
-    'conv_kernel_paralell'
+    'conv_kernel_paralell_many_inputs'
 )
 
 dot_kernel_paralell_many_inputs = cp.RawKernel(
@@ -103,6 +103,36 @@ dot_kernel_paralell_many_inputs = cp.RawKernel(
     'dot_kernel_paralell_many_inputs'
 )
 
+conv_kernel_paralell = cp.RawKernel(
+    r'''
+    extern "C" __global__
+    void conv_kernel_paralell(float* ret_mat, float* temp, float * conv, int temp_s1, int temp_s2, int temp_s3, int conv_s1, int conv_s2, int filtersize)
+    {
+      int id_network = blockIdx.x; //retmatshape 0
+      int i = blockIdx.y; //retmatshape 1 = convshape 1
+      int j = blockIdx.z; //retmatshape 2 = tempshape 2
+      int k = threadIdx.x; // retmatshape 3 = tempshape 3
+
+      float t = 0.;
+      
+      for(int temp_i = 0; temp_i < conv_s2; temp_i++) //input filter number
+      {
+        for(int temp_j = j; temp_j < j + filtersize; temp_j++)
+        {
+          for(int temp_k = k; temp_k < k + filtersize; temp_k++)
+          {
+            t += temp[temp_i * temp_s2 * temp_s3 +  temp_j * temp_s3 + temp_k] * 
+            conv[id_network * conv_s1 * conv_s2 * filtersize * filtersize+ i * conv_s2 * filtersize * filtersize + temp_i * filtersize * filtersize + (temp_j - j) * filtersize + temp_k - k];
+          }
+        }
+      }
+
+      ret_mat[id_network * gridDim.z * gridDim.y * blockDim.x+ i * gridDim.z * blockDim.x + j * blockDim.x + k] = t;
+      
+    }
+    ''',
+    'conv_kernel_paralell'
+)
 
 def max_pooling_cuda_paralell(temp):
     ret_mat = cp.zeros((temp.shape[0], temp.shape[1], int(cp.ceil(temp.shape[2]/2)), int(cp.ceil(temp.shape[3]/2))), dtype = cp.float32)
@@ -111,12 +141,12 @@ def max_pooling_cuda_paralell(temp):
     max_pooling_kernel_paralell(grid_size, block_size, (ret_mat, temp, temp.shape[2], temp.shape[3], temp.shape[1]))
     return ret_mat
 
-def convolve_cuda_paralell(temp, conv):
+def convolve_cuda_paralell_many_inputs(temp, conv):
     #int temp_s1, int temp_s2, int temp_s3, int conv_s1, int conv_s2, int filtersize
     ret_mat = cp.zeros((temp.shape[0] , conv.shape[1], temp.shape[2] - 2, temp.shape[3] - 2), dtype = cp.float32)
     block_size = (ret_mat.shape[3], 1)
     grid_size =  (ret_mat.shape[0], ret_mat.shape[1], ret_mat.shape[2])
-    conv_kernel_paralell(grid_size, block_size, (ret_mat, temp, conv,temp.shape[1], temp.shape[2], temp.shape[3], conv.shape[1], conv.shape[2], 3))
+    conv_kernel_paralell_many_inputs(grid_size, block_size, (ret_mat, temp, conv,temp.shape[1], temp.shape[2], temp.shape[3], conv.shape[1], conv.shape[2], 3))
     return ret_mat
 
 
@@ -142,4 +172,12 @@ def dot_cuda_paralell(single_input, lin):
   population_size = cp.int32(lin.shape[0])
   dot_kernel_paralell(grid_size, block_size, (single_input, lin, ret_mat, population_size, input_size, output_size))
   return ret_mat 
-    
+
+
+def convolve_cuda_paralell(temp, conv):
+    #int temp_s1, int temp_s2, int temp_s3, int conv_s1, int conv_s2, int filtersize
+    ret_mat = cp.zeros((conv.shape[0] , conv.shape[1], temp.shape[1] - 2, temp.shape[2] - 2), dtype = cp.float32)
+    block_size = (ret_mat.shape[3], 1)
+    grid_size =  (ret_mat.shape[0], ret_mat.shape[1], ret_mat.shape[2])
+    conv_kernel_paralell(grid_size, block_size, (ret_mat, temp, conv, temp.shape[0], temp.shape[1], temp.shape[2], conv.shape[1], conv.shape[2], 3))
+    return ret_mat

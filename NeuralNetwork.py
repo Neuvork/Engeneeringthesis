@@ -1,7 +1,7 @@
 import cupy as cp
 import numpy as np
 from functools import reduce
-from Engeneeringthesis.kernels import dot_cuda_paralell, max_pooling_cuda_paralell, convolve_cuda_paralell, dot_cuda_paralell_many_inputs
+from Engeneeringthesis.kernels import dot_cuda_paralell, max_pooling_cuda_paralell, convolve_cuda_paralell, dot_cuda_paralell_many_inputs, convolve_cuda_paralell_many_inputs
 
 no_debug = 1
 basic_debug_mode = 2
@@ -172,7 +172,10 @@ class Neural_Network:
     first_lin = 0
     for layer in self.layers:
       if layer[0]=='conv':
-        temp = convolve_cuda_paralell(temp, layer[1])
+        if layer_num == 0:
+          temp = convolve_cuda_paralell(temp, layer[1])
+        else:
+          temp = convolve_cuda_paralell_many_inputs(temp, layer[1])
         temp = max_pooling_cuda_paralell(temp)
       if layer[0]=='linear':
         if first_lin == 0 and False:
