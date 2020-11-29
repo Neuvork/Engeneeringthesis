@@ -16,7 +16,7 @@ class Logs():
       print(t)
       self.types.append(t)
       self.logs.append([])
-      self.output_dir.append("pictures/" + t[1] + "/")
+      self.output_dir.append("drive/MyDrive/pictures/" + t[1] + "/")
       self.mkdir_p(self.output_dir[it])
       if t[0] == 'custom':
         file = open("Logs_log.txt", "a")
