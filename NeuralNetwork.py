@@ -2,7 +2,6 @@ import cupy as cp
 import numpy as np
 from functools import reduce
 from Engeneeringthesis.kernels import dot_cuda_paralell, max_pooling_cuda_paralell, convolve_cuda_paralell, dot_cuda_paralell_many_inputs, convolve_cuda_paralell_many_inputs
-
 no_debug = 1
 basic_debug_mode = 2
 super_debug_mode = 3
@@ -178,7 +177,7 @@ class Neural_Network:
           temp = convolve_cuda_paralell_many_inputs(temp, layer[1])
         temp = max_pooling_cuda_paralell(temp)
       if layer[0]=='linear':
-        if first_lin == 0 and False:
+        if first_lin == 0:
           first_lin+=1
           temp = temp.reshape(-1,layer[1].shape[1])
         if layer_num ==0:
@@ -187,7 +186,8 @@ class Neural_Network:
           temp = dot_cuda_paralell_many_inputs(temp, layer[1])
       if layer[0] == 'bias':
         temp += layer[1]
-        #temp = cp.tanh(temp, dtype = cp.float32)
+        temp = cp.tanh(temp, dtype = cp.float32)
+      layer_num += 1
     return cp.argmax(temp, axis = 1)
 
   def replace_individual(self, i, individual):
