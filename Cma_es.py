@@ -133,7 +133,7 @@ class CMA_ES():
 
     self.covariance_matrix = C1 + C2 + C3
     if self._loops_number == self.hp_loops_number:
-      self.covariance_matrix = cp.triu(self.covariance_matrix) + cp.triu(self.covariance_matrix,1)
+      self.covariance_matrix = cp.triu(self.covariance_matrix) + cp.triu(self.covariance_matrix,1).T
       self._loops_number = 0
       self.D_matrix,self.B_matrix = cp.linalg.eigh(self.covariance_matrix)
       self.D_matrix = cp.sqrt(self.D_matrix)
@@ -168,7 +168,7 @@ class CMA_ES():
                 + " self.new_sigma: " + str(self.sigma * temp2)
                 + " cage_number: " + str(self.number_of_cage))
     file.close()
-    self.sigma*=temp2
+    self.sigma*=temp2.item()
 
 
 

@@ -1,5 +1,8 @@
 import cupy as cp
 import numpy as np
+from functools import reduce
+from Engeneeringthesis.kernels import dot_cuda_paralell, max_pooling_cuda_paralell, convolve_cuda_paralell, dot_cuda_paralell_many_inputs
+
 no_debug = 1
 basic_debug_mode = 2
 super_debug_mode = 3
@@ -25,7 +28,6 @@ class Neural_Network:
       if layer[0] == 'conv':
         self.layers.append(['conv', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])   #layer[0] -> conv ; layer[1] ->[num_nets, out_channel, in_channel, filter_wdth, filter_height]
       if layer[0] == 'linear':
-
         self.layers.append(['linear', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])  
   
 
@@ -39,7 +41,7 @@ class Neural_Network:
     for layer in self.layers:
       i = 0
       for individual in layer[1]:
-        ret_mat[i][index:] = cp.asnumpy(individual.flatten())
+        ret_mat[i][index:index+individual.size] = cp.asnumpy(individual.flatten())
         i += 1 
       index += layer[1][0].flatten().size
     self.layers = []
@@ -56,6 +58,7 @@ class Neural_Network:
     input_size = (input_size[0],input_size[1],input_size[2])
 
     for layer in given_layers:
+      print(layer, input_size, type(input_size))
 
       if layer[0] == 'conv':
         layers.append((layer[0],[num_nets,layer[1][0],input_size[0],layer[1][1],layer[1][2]]))
@@ -64,8 +67,10 @@ class Neural_Network:
 
       if layer[0] == 'linear':
         temp = 1
-        for i in input_size:
-          temp *= i
+        if type(input_size) == int:
+          temp = input_size
+        else:
+          temp = reduce( lambda a,b: a*b, input_size)
         input_size = int(temp)
         layers.append((layer[0],[num_nets,input_size,layer[1]]))
         input_size = layer[1]
@@ -101,25 +106,26 @@ class Neural_Network:
     ret_val = sigma*B.dot(D*vector) + mean
     return ret_val
 
-  def caged_sample(self,covariance_matrices, sigmas, means, lam):
+  def caged_sample(self,Bs,Ds, sigmas, means, lam):
     self.layers = [] #cleaning previous population
     self.cuda_memory_clear()
     #concat sampled vectors and parse them
     ret_mat = cp.zeros((lam, self.dimensionality),dtype = cp.float32)
-    L = []
-    for i in range(len(self.cage_dimensionalities)):
-      L.append(cp.linalg.cholesky(covariance_matrices[i]*(sigmas[i]**2)).astype(cp.float32))
+    #L = []
+    #for i in range(len(self.cage_dimensionalities)):
+    #  L.append(cp.linalg.cholesky(covariance_matrices[i]*(sigmas[i]**2)).astype(cp.float32))
     for i in range(lam):
-      ret_mat[i] = self.caged_multivariate_cholesky(means,L)
+      ret_mat[i] = self.caged_multivariate_cholesky(means,Bs,Ds,sigmas)
     self.cuda_memory_clear()
     self.matrix = ret_mat
     self.vectorized = True
   
-  def caged_multivariate_cholesky(self, means, cholesky_covariances):
+  def caged_multivariate_cholesky(self, means, Bs, Ds, sigmas):
     vector = cp.array([])
     for i in range(len(means)):
-      sampled_vector = cp.random.normal(loc = 0,scale = 1,size = cholesky_covariances[i].shape[0],dtype = cp.float32)
-      vector = cp.concatenate((vector, cholesky_covariances[i].dot(sampled_vector) + means[i]))
+      sampled_vector = cp.random.normal(loc = 0,scale = 1,size = Bs[i].shape[0],dtype = cp.float32)
+      sampled_vector = sigmas[i]*Bs[i].dot(Ds[i]*sampled_vector) + means[i]
+      vector = cp.concatenate((vector, sampled_vector))
     return vector
 
   def mult(self, l):
@@ -140,6 +146,7 @@ class Neural_Network:
     for number in numbers:
       self.layers.append((self.layers_shapes[it][0],cp.array(self.matrix[:,start:(start+number)]).reshape(self.layers_shapes[it][1])))
       it+=1
+      start += number
     self.matrix = None
     self.vectorized = False
 
@@ -159,17 +166,20 @@ class Neural_Network:
       if layer[0]=='conv':
         temp = convolve_cuda_paralell(temp, layer[1])
         temp = max_pooling_cuda_paralell(temp)
-        temp = cp.tanh(temp)
+        temp = cp.tanh(temp, dtype = cp.float32)
       if layer[0]=='linear':
         if first_lin == 0 and False:
           first_lin+=1
           temp = temp.reshape(-1,layer[1].shape[1])
           #temp = brute_dot(temp, layer[1])
           #temp = brute_dot_single_input(temp, layer[1])
-        temp = dot_cuda_paralell(temp, layer[1])
+        if layer_num ==0:
+          temp = dot_cuda_paralell(temp, layer[1])
+        else:
+          temp = dot_cuda_paralell_many_inputs(temp, layer[1])
 
         if layer_num < len(self.layers) - 1:
-          temp = cp.tanh(temp)
+          temp = cp.tanh(temp, dtype = cp.float32)
           layer_num += 1
     return cp.argmax(temp, axis = 1)
 
