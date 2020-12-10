@@ -7,11 +7,10 @@ basic_debug_mode = 2
 super_debug_mode = 3
 only_interesting = 5
 DEBUG_MODE = only_interesting
-from Engeneeringthesis.kernels import dot_cuda_paralell, max_pooling_cuda_paralell, convolve_cuda_paralell
 class Neural_Network:
 
 
-  def __init__(self,num_nets,input_size,given_layers,loc=0,scale=.3, cage_dimensionalities = None):#after init in neuronized state
+  def __init__(self,num_nets,input_size,given_layers,loc=0,scale=1, cage_dimensionalities = None):#after init in neuronized state
     self.mempool = cp.get_default_memory_pool()
     self.pinned_mempool = cp.get_default_memory_pool()
     self.population_size = num_nets
@@ -114,25 +113,26 @@ class Neural_Network:
     ret_val = sigma*B.dot(D*vector) + mean
     return ret_val
 
-  def caged_sample(self,covariance_matrices, sigmas, means, lam):
+  def caged_sample(self,Bs,Ds, sigmas, means, lam):
     self.layers = [] #cleaning previous population
     self.cuda_memory_clear()
     #concat sampled vectors and parse them
     ret_mat = cp.zeros((lam, self.dimensionality),dtype = cp.float32)
-    L = []
-    for i in range(len(self.cage_dimensionalities)):
-      L.append(cp.linalg.cholesky(covariance_matrices[i]*(sigmas[i]**2)).astype(cp.float32))
+    #L = []
+    #for i in range(len(self.cage_dimensionalities)):
+    #  L.append(cp.linalg.cholesky(covariance_matrices[i]*(sigmas[i]**2)).astype(cp.float32))
     for i in range(lam):
-      ret_mat[i] = self.caged_multivariate_cholesky(means,L)
+      ret_mat[i] = self.caged_multivariate_cholesky(means,Bs,Ds,sigmas)
     self.cuda_memory_clear()
     self.matrix = ret_mat
     self.vectorized = True
   
-  def caged_multivariate_cholesky(self, means, cholesky_covariances):
+  def caged_multivariate_cholesky(self, means, Bs, Ds, sigmas):
     vector = cp.array([])
     for i in range(len(means)):
-      sampled_vector = cp.random.normal(loc = 0,scale = 1,size = cholesky_covariances[i].shape[0],dtype = cp.float32)
-      vector = cp.concatenate((vector, cholesky_covariances[i].dot(sampled_vector) + means[i]))
+      sampled_vector = cp.random.normal(loc = 0,scale = 1,size = Bs[i].shape[0],dtype = cp.float32)
+      sampled_vector = sigmas[i]*Bs[i].dot(Ds[i]*sampled_vector) + means[i]
+      vector = cp.concatenate((vector, sampled_vector))
     return vector
 
   def mult(self, l):
@@ -209,14 +209,3 @@ class Neural_Network:
       move = self.cage_dimensionalities[number_of_cage]
       return self.matrix[indices, begin : begin + move]
       
-      
-
-
-
-
-  def get_individual(self, i):
-    result_individual = []
-    i = int(i)
-    for layer in self.layers:
-      result_individual.append(layer[1][i].copy())
-    return result_individual
