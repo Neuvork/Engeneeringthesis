@@ -83,7 +83,7 @@ conv_kernel_paralell_many_inputs = cp.RawKernel(
 dot_kernel_paralell_many_inputs = cp.RawKernel(
     r'''
     extern "C" __global__
-    void dot_kernel_paralell_many_inputs(float* input, float* lin, float* output, int population_size, int input_size, int output_size)
+    void dot_kernel_paralell_many_inputs(float* input, float* lin, float* output, int population_size, int input_size, int single_input_size, int output_size)
     {
       int network_id = blockIdx.x;
       int index_in_output = threadIdx.x;
@@ -91,10 +91,10 @@ dot_kernel_paralell_many_inputs = cp.RawKernel(
       float value_for_thread = 0.;
 
 
-      int index_in_input = network_id*input_size;
-      for(int i = index_in_input; i < index_in_input + input_size; i++)
+      int index_in_input = network_id*single_input_size;
+      for(int i = index_in_input; i < index_in_input + single_input_size; i++)
       {
-        value_for_thread += input[i] * lin[network_id * input_size * output_size + (i - index_in_input)*output_size + index_in_output];
+        value_for_thread += input[i] * lin[network_id * single_input_size * output_size + (i - index_in_input)*output_size + index_in_output];
       }
       output[network_id * output_size + index_in_output] = value_for_thread;
 
@@ -102,6 +102,8 @@ dot_kernel_paralell_many_inputs = cp.RawKernel(
     ''',
     'dot_kernel_paralell_many_inputs'
 )
+
+
 
 conv_kernel_paralell = cp.RawKernel(
     r'''
@@ -155,11 +157,14 @@ def dot_cuda_paralell_many_inputs(input, lin):
   block_size = (lin.shape[2], 1)
   grid_size = (lin.shape[0], 1)
 
-  input_size = cp.int32(input.shape[1])
+  input_size = cp.int32(input.shape[0])
+  single_input_size = cp.int32(input.shape[0]//lin.shape[0])
+  print("input size", input_size)
+  print("single size", single_input_size)
   output_size = cp.int32(lin.shape[2])
   population_size = cp.int32(lin.shape[0])
-  dot_kernel_paralell_many_inputs(grid_size, block_size, (input, lin, ret_mat, population_size, input_size, output_size))
-  return ret_mat  
+  dot_kernel_paralell_many_inputs(grid_size, block_size, (input, lin, ret_mat, population_size, input_size, single_input_size, output_size))
+  return ret_mat 
 
 
 def dot_cuda_paralell(single_input, lin):
