@@ -179,7 +179,7 @@ class Neural_Network:
       if layer[0]=='linear':
         if first_lin == 0:
           first_lin+=1
-          temp = temp.reshape(-1,layer[1].shape[1])
+          temp = temp.flatten()#reshape(-1,layer[1].shape[1])
         if layer_num ==0:
           temp = dot_cuda_paralell(temp, layer[1])
         else:

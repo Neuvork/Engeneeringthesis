@@ -17,7 +17,7 @@ class Caged_CMA_ES():
     self.evaluate_func = evaluate_func
 
     for i in range(number_of_cages):
-      self.cages.append(CMA_ES(population, sigma, evaluate_func, logs, dimensionalities[i], i))
+      self.cages.append(CMA_ES(population, sigma, evaluate_func, logs, dimensionality = dimensionalities[i], number_of_cage = i))
 
      
   def set_mean_act(self):
