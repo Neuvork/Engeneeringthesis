@@ -2,12 +2,17 @@ from Engeneeringthesis.Cma_es import CMA_ES
 import cupy as cp
 import numpy as np
 class Caged_CMA_ES():
-  def __init__(self,population,sigma,evaluate_func, logs, number_of_cages, dimensionalities):
+  def __init__(self,population,sigma,evaluate_func, logs, number_of_cages, dimensionalities, params_dimensionalities = None):
     self.cages = []
     self.logs = logs
     self.number_of_cages = number_of_cages
     self.population = population
     self.dimensionalities = dimensionalities
+    self.params_dimensionalities = None
+    if params_dimensionalities == None:
+      self.params_dimensionalities = self.dimensionalities
+    else:
+      self.params_dimensionalities = params_dimensionalities
     self.dimensionality = sum(self.dimensionalities)
     self.evaluate_func = evaluate_func
 
@@ -89,11 +94,11 @@ class Caged_CMA_ES():
 
     alpha = 1.5
     for i in range(self.number_of_cages):
-      c_1[i] = 2/(self.dimensionalities[i]**2)
-      c_sigma[i] = (mu_w + 2)/(self.dimensionalities[i] + mu_w + 5)
-      d_sigma[i] = 1 + 2*max([0,cp.sqrt((mu_w - 1)/(self.dimensionalities[i] + 1)) - 1]) + c_sigma[i] #dampening parameter could probably be hyperparameter, wiki says it is close to 1 so whatever
-      c_covariance[i] = (4 + mu_w/self.dimensionalities[i])/(self.dimensionalities[i] + 4 + 2*mu_w/self.dimensionalities[i]) # c_covariance * 100 not working
-      c_mu[i] = min([1-c_1[i],2*(mu_w - 2 + 1/mu_w)/(((self.dimensionalities[i]+2)**2)+mu_w)])
+      c_1[i] = 2/(self.params_dimensionalities[i]**2)
+      c_sigma[i] = (mu_w + 2)/(self.params_dimensionalities[i] + mu_w + 5)
+      d_sigma[i] = 1 + 2*max([0,cp.sqrt((mu_w - 1)/(self.params_dimensionalities[i] + 1)) - 1]) + c_sigma[i] #dampening parameter could probably be hyperparameter, wiki says it is close to 1 so whatever
+      c_covariance[i] = (4 + mu_w/self.params_dimensionalities[i])/(self.params_dimensionalities[i] + 4 + 2*mu_w/self.params_dimensionalities[i]) # c_covariance * 100 not working
+      c_mu[i] = min([1-c_1[i],2*(mu_w - 2 + 1/mu_w)/(((self.params_dimensionalities[i]+2)**2)+mu_w)])
       
       
     
