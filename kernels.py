@@ -83,7 +83,7 @@ conv_kernel_paralell_many_inputs = cp.RawKernel(
 dot_kernel_paralell_many_inputs = cp.RawKernel(
     r'''
     extern "C" __global__
-    void dot_kernel_paralell(float* input, float* lin, float* output, int population_size, int input_size, int output_size)
+    void dot_kernel_paralell_many_inputs(float* input, float* lin, float* output, int population_size, int input_size, int output_size)
     {
       int network_id = blockIdx.x;
       int index_in_output = threadIdx.x;
@@ -158,7 +158,7 @@ def dot_cuda_paralell_many_inputs(input, lin):
   input_size = cp.int32(input.shape[1])
   output_size = cp.int32(lin.shape[2])
   population_size = cp.int32(lin.shape[0])
-  dot_kernel_paralell(grid_size, block_size, (input, lin, ret_mat, population_size, input_size, output_size))
+  dot_kernel_paralell_many_inputs(grid_size, block_size, (input, lin, ret_mat, population_size, input_size, output_size))
   return ret_mat  
 
 
