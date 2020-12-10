@@ -12,17 +12,23 @@ def cuda_memory_clear():
 
 
 class CMA_ES():
-  def __init__(self,population,sigma,evaluate_func, logs, dimensionality = None, number_of_cage = None):
+  def __init__(self,population,sigma,evaluate_func, logs, dimensionality = None, param_dimensionality = None, number_of_cage = None):
     file = open("LOGS.txt",'w')
     file.write("BUM\n")
     file.close()
     self._loops_number = 0
     self.hp_loops_number = 3
     self.dimensionality = None
+    self.param_dimensionality = None
     if dimensionality == None:
       self.dimensionality = population.dimensionality
     else:
       self.dimensionality = dimensionality
+    if param_dimensionality == None:
+      self.param_dimensionality = self.dimensionality
+    else:
+      self.param_dimensionality = param_dimensionality
+
     self.number_of_cage = number_of_cage
     self.B_matrix = cp.diag(cp.ones(self.dimensionality,dtype = cp.float32))
     self.D_matrix = cp.ones(self.dimensionality,dtype = cp.float32).reshape(-1,1).flatten()
@@ -40,7 +46,7 @@ class CMA_ES():
     self.logs = logs
 
   def _indicator_function(self, val, alpha):
-    if val < alpha * self.dimensionality and val > 0:
+    if val < alpha * self.param_dimensionality and val > 0:
       return 1
     else:
       return 0
@@ -151,7 +157,7 @@ class CMA_ES():
     return cp.sqrt(cp.sum(vector*vector))
 
   def update_sigma(self,c_sigma,d_sigma):
-    temp = cp.sqrt(self.dimensionality, dtype = cp.float32)*(1-(1/(4*self.dimensionality)) + (1/(21*self.dimensionality**2)))
+    temp = cp.sqrt(self.dimensionality, dtype = cp.float32)*(1-(1/(4*self.param_dimensionality)) + (1/(21*self.param_dimensionality**2)))
 
     temp2 = cp.exp((c_sigma/d_sigma)*((self.norm(self.isotropic)/temp)-1))
     ret_val = self.sigma * temp2
@@ -181,18 +187,18 @@ class CMA_ES():
     self.weights = self.weights/cp.sum(self.weights)
     mu_w = 1/cp.sum(self.weights**2)
     
-    dimension = 7840
+    #dimension = 7840
     #c_sigma = (mu_w + 2)/(dimension + mu_w + 5)
     #d_sigma = 1 + 2*max([0,cp.sqrt((mu_w - 1)/(dimension + 1)) - 1]) + c_sigma #dampening parameter could probably be hyperparameter, wiki says it is close to 1 so whatever
     #c_covariance = (4 + mu_w/dimension)/(dimension + 4 + 2*mu_w/dimension) # c_covariance * 100 not working
     #c_1 = 2/(dimension**2)
     #c_mu = min([1-c_1,2*(mu_w - 2 + 1/mu_w)/(((dimension+2)**2)+mu_w)])
 
-    c_1 = 2/(self.dimensionality**2)
-    c_sigma = (mu_w + 2)/(self.dimensionality + mu_w + 5)
-    d_sigma = 1 + 2*max([0,cp.sqrt((mu_w - 1)/(self.dimensionality + 1)) - 1]) + c_sigma #dampening parameter could probably be hyperparameter, wiki says it is close to 1 so whatever
-    c_covariance = (4 + mu_w/self.dimensionality)/(self.dimensionality + 4 + 2*mu_w/self.dimensionality) # c_covariance * 100 not working
-    c_mu = min([1-c_1,2*(mu_w - 2 + 1/mu_w)/(((self.dimensionality+2)**2)+mu_w)])
+    c_1 = 2/(self.param_dimensionality**2)
+    c_sigma = (mu_w + 2)/(self.param_dimensionality + mu_w + 5)
+    d_sigma = 1 + 2*max([0,cp.sqrt((mu_w - 1)/(self.param_dimensionality + 1)) - 1]) + c_sigma #dampening parameter could probably be hyperparameter, wiki says it is close to 1 so whatever
+    c_covariance = (4 + mu_w/self.param_dimensionality)/(self.param_dimensionality + 4 + 2*mu_w/self.param_dimensionality) # c_covariance * 100 not working
+    c_mu = min([1-c_1,2*(mu_w - 2 + 1/mu_w)/(((self.param_dimensionality+2)**2)+mu_w)])
     
     file = open("PARAMS.txt", "w")
     file.write("c_1: " + str(c_1) + "\n")

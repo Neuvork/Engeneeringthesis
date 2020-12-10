@@ -1,3 +1,6 @@
+from Engeneeringthesis.Cma_es import CMA_ES
+import cupy as cp
+import numpy as np
 class Caged_CMA_ES():
   def __init__(self,population,sigma,evaluate_func, logs, number_of_cages, dimensionalities):
     self.cages = []
@@ -14,13 +17,13 @@ class Caged_CMA_ES():
      
   def set_mean_act(self):
     ret_mean_act = []
-    for i in range(number_of_cages):
+    for i in range(self.number_of_cages):
       ret_mean_act.append(cp.zeros(self.dimensionalities[i], dtype = cp.float32))
     return ret_mean_act
 
   def update_mean(self, scores,sorted_indices,mu):
     ret_list = []
-    for i in range(number_of_cages):
+    for i in range(self.number_of_cages):
       ret_list.append(self.cages[i].update_mean(scores,sorted_indices,mu))
     return ret_list
     
@@ -87,8 +90,8 @@ class Caged_CMA_ES():
     alpha = 1.5
     for i in range(self.number_of_cages):
       c_1[i] = 2/(self.dimensionalities[i]**2)
-      c_sigma[i] = (mu_w + 2)/(self.dimensionality + mu_w + 5)
-      d_sigma[i] = 1 + 2*max([0,cp.sqrt((mu_w - 1)/(self.dimensionality + 1)) - 1]) + c_sigma[i] #dampening parameter could probably be hyperparameter, wiki says it is close to 1 so whatever
+      c_sigma[i] = (mu_w + 2)/(self.dimensionalities[i] + mu_w + 5)
+      d_sigma[i] = 1 + 2*max([0,cp.sqrt((mu_w - 1)/(self.dimensionalities[i] + 1)) - 1]) + c_sigma[i] #dampening parameter could probably be hyperparameter, wiki says it is close to 1 so whatever
       c_covariance[i] = (4 + mu_w/self.dimensionalities[i])/(self.dimensionalities[i] + 4 + 2*mu_w/self.dimensionalities[i]) # c_covariance * 100 not working
       c_mu[i] = min([1-c_1[i],2*(mu_w - 2 + 1/mu_w)/(((self.dimensionalities[i]+2)**2)+mu_w)])
       
