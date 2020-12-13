@@ -159,8 +159,6 @@ def dot_cuda_paralell_many_inputs(input, lin):
 
   input_size = cp.int32(input.shape[0])
   single_input_size = cp.int32(input.shape[0]//lin.shape[0])
-  print("input size", input_size)
-  print("single size", single_input_size)
   output_size = cp.int32(lin.shape[2])
   population_size = cp.int32(lin.shape[0])
   dot_kernel_paralell_many_inputs(grid_size, block_size, (input, lin, ret_mat, population_size, input_size, single_input_size, output_size))
