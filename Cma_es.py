@@ -212,20 +212,20 @@ class CMA_ES():
     #body 
     for i in range(iterations):
       self._loops_number += 1
-      scores = self.evaluate_func(self.population, data)
-      print(cp.max(scores))
-      sorted_indices = cp.argsort(-scores)
+      train_scores, validation_scores = self.evaluate_func(self.population, data)
+      sorted_indices = cp.argsort(-train_scores)
       mean_prev = mean_act.copy()
       self.population.parse_to_vector()
       print("___bedzie udpate mean")
-      mean_act = self.update_mean(scores,sorted_indices,mu) #we need to be vectorized here
+      mean_act = self.update_mean(train_scores,sorted_indices,mu) #we need to be vectorized here
       print("___bedzie logs log")
-      self.logs.log([self.covariance_matrix,self.population.matrix,self.sigma,self.isotropic,self.anisotropic,mean_prev,cp.max(scores),mean_act-mean_prev])
+      self.logs.log([self.covariance_matrix,self.population.matrix,self.sigma,self.isotropic,self.anisotropic,
+                      mean_prev,cp.max(train_scores), cp.max(validation_scores),mean_act-mean_prev])
       self.logs.plot()
       self.update_isotropic(mean_act,mean_prev,c_sigma,mu_w)
       c_s = self.compute_cs(alpha,c_1,c_covariance)
       self.update_anisotropic(mean_act,mean_prev,mu_w,c_covariance,alpha)
-      self.update_covariance_matrix(c_1,c_mu,c_s,scores,sorted_indices,mu,mean_prev)
+      self.update_covariance_matrix(c_1,c_mu,c_s,train_scores,sorted_indices,mu,mean_prev)
       self.update_sigma(c_sigma,d_sigma)
       self.population.sample(self.B_matrix, self.D_matrix, self.sigma, mean_act, lam)
       self.population.parse_from_vectors()

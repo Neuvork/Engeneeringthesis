@@ -45,7 +45,7 @@ class Caged_CMA_ES():
         return (i , number // i)
       
 
-  def parse_log_args(self, mean_act, scores):
+  def parse_log_args(self, mean_act, train_scores, validation_scores):
     horizontal_stacks = []
     horizontal, vertical = self.find_division(self.number_of_cages)
     for i in range(vertical):
@@ -75,7 +75,7 @@ class Caged_CMA_ES():
     mean = np.array([])
     for i in range(self.number_of_cages):
       mean = np.concatenate((mean, cp.asnumpy(mean_act[i])))
-    return [cov, sigmas, isotropic, anisotropic, mean, cp.max(scores)]
+    return [cov, sigmas, isotropic, anisotropic, mean, cp.max(validation_scores), cp.max(validation_scores)]
 
 
   def fit(self, data, mu, lam, iterations): # mu is how many best samples from population, lam is how much we generate
@@ -120,20 +120,19 @@ class Caged_CMA_ES():
 
     #body 
     for i in range(iterations):
-      scores = self.evaluate_func(self.population, data)
-      print(cp.max(scores))
-      sorted_indices = cp.argsort(-scores)
+      train_scores, validation_scores = self.evaluate_func(self.population, data)
+      sorted_indices = cp.argsort(-train_scores)
       for j in range(len(mean_prev)):
         mean_prev[j] = mean_act[j].copy() #maybe deepcopy
       self.population.parse_to_vector()
-      mean_act = self.update_mean(scores,sorted_indices,mu) #we need to be vectorized here
-      self.logs.log(self.parse_log_args(mean_act, scores))
+      mean_act = self.update_mean(train_scores,sorted_indices,mu) #we need to be vectorized here
+      self.logs.log(self.parse_log_args(mean_act, train_scores, validation_scores))
       self.logs.plot()
       for j in range(self.number_of_cages):
         self.cages[j].update_isotropic(mean_act[j],mean_prev[j],c_sigma[j],problem_mu_w)
         c_s[j] = self.cages[j].compute_cs(alpha,c_1[j],c_covariance[j])
         self.cages[j].update_anisotropic(mean_act[j],mean_prev[j],mu_w,c_covariance[j],alpha)
-        self.cages[j].update_covariance_matrix(c_1[j],c_mu[j],c_s[j],scores,sorted_indices,mu,mean_prev[j])
+        self.cages[j].update_covariance_matrix(c_1[j],c_mu[j],c_s[j],train_scores,sorted_indices,mu,mean_prev[j])
         self.cages[j].update_sigma(c_sigma[j],d_sigma[j])
 
       
