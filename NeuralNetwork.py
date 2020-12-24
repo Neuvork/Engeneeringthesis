@@ -78,7 +78,10 @@ class Neural_Network:
         input_size = layer[1]
 
       if iterator != len(given_layers):
-        layers.append(('bias', [num_nets] + list(input_size)))
+        if type(input_size) == int:
+          layers.append(('bias', [num_nets] + [input_size]))
+        else:
+          layers.append(('bias', [num_nets] + list(input_size)))
       iterator += 1
       
       
