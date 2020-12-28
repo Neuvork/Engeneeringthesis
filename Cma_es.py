@@ -16,7 +16,7 @@ class CMA_ES():
     file = open("LOGS.txt",'w')
     file.close()
     self._loops_number = 0
-    self.hp_loops_number = 3
+    self.hp_loops_number = 0
     self.dimensionality = None
     self.param_dimensionality = None
     if dimensionality == None:
