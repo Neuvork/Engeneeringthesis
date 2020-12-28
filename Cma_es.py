@@ -73,7 +73,7 @@ class CMA_ES():
   def update_isotropic(self,mean_act,mean_prev,c_sigma,mu_w):
     file = open("LOGS.txt", "a")
 
-    first_term = cp.float32(1-c_sigma)*self.isotropic
+    first_term = (1-c_sigma)*self.isotropic.astype(cp.float32)
 
     second_term = (cp.sqrt(1-((1-c_sigma)**2))*cp.sqrt(mu_w)).astype(cp.float32)
     third_term = (cp.array(mean_act, dtype = cp.float32)-cp.array(mean_prev, dtype=cp.float32))/cp.array(self.sigma, dtype=cp.float32)
@@ -148,7 +148,7 @@ class CMA_ES():
     C1 = discount_factor.astype(cp.float32) * self.covariance_matrix
     C2 = (c_1 * (self.anisotropic.reshape(-1,1).dot(self.anisotropic.reshape(1,-1)))).astype(cp.float32)
     C3 = (c_mu * self._sum_for_covariance_matrix_update(scores, sorted_indices, mu, mean_prev)).astype(cp.float32)
-    
+
 
     self.covariance_matrix = C1 + (C2 + C3)/self.hp_loops_number
     self.covariance_matrix = self.covariance_matrix.astype(cp.float32)
@@ -206,6 +206,8 @@ class CMA_ES():
     d_sigma = 1 + 2*max([0,cp.sqrt((mu_w - 1)/(self.param_dimensionality + 1)) - 1]) + c_sigma #dampening parameter could probably be hyperparameter, wiki says it is close to 1 so whatever
     c_covariance = (4 + mu_w/self.param_dimensionality)/(self.param_dimensionality + 4 + 2*mu_w/self.param_dimensionality) # c_covariance * 100 not working
     c_mu = min([1-c_1,2*(mu_w - 2 + 1/mu_w)/(((self.param_dimensionality+2)**2)+mu_w)])
+
+    mu //= self.hp_loops_number
     
     file = open("PARAMS.txt", "w")
     file.write("c_1: " + str(c_1) + "\n")
