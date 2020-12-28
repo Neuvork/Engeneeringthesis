@@ -222,7 +222,6 @@ class CMA_ES():
     alpha = 1.5
     #body 
     for i in range(iterations):
-      self._loops_number += 1
       train_scores, validation_scores = self.evaluate_func(self.population, data)
       sorted_indices = cp.argsort(-train_scores)
       mean_prev = mean_act.copy()
@@ -242,6 +241,7 @@ class CMA_ES():
       self.population.parse_from_vectors()
       if self._loops_number == self.hp_loops_number:
         self._loops_number = 0
+      self._loops_number += 1
       file = open("LOGS.txt", "a")
       file.write(str(self._loops_number) + "\n\n")
       file.close()
