@@ -38,7 +38,7 @@ class CMA_ES():
     self.population = population
 
     self.sigma = sigma
-    self.d_sigma = 0
+    self.d_sigma = 1
 
     self.isotropic = cp.zeros(self.dimensionality, dtype = cp.float32) #check it
     self.d_isotropic = cp.zeros(self.dimensionality, dtype = cp.float32) #check it
@@ -181,7 +181,10 @@ class CMA_ES():
                 + "temp2: " + str(temp2.dtype) + "\n"
                 + "ret_val: " + str(ret_val.dtype) + "\n")
     file.close()
-    self.sigma*=temp2.item()
+    d_sigma *= temp2.item()
+    if self.hp_loops_number == self._loops_number:
+      self.sigma *= cp.power(d_sigma, 1/(self._loops_number), dtype = cp.float32).item()
+      d_sigma = 1
 
 
 
