@@ -154,7 +154,6 @@ class CMA_ES():
     self.covariance_matrix = self.covariance_matrix.astype(cp.float32)
     if self._loops_number == self.hp_loops_number:
       self.covariance_matrix = cp.triu(self.covariance_matrix) + cp.triu(self.covariance_matrix,1).T
-      self._loops_number = 0
       self.D_matrix,self.B_matrix = cp.linalg.eigh(self.covariance_matrix)
       self.D_matrix = cp.sqrt(self.D_matrix)
       self.invert_sqrt_covariance_matrix = (self.B_matrix.dot(cp.diag(self.D_matrix**-1))).dot(self.B_matrix.T)
@@ -193,6 +192,7 @@ class CMA_ES():
   def fit(self, data, mu, lam, iterations): # mu is how many best samples from population, lam is how much we generate
     mean_act = cp.zeros(self.dimensionality)
     #constant
+    mu //= self.hp_loops_number
     self.weights = cp.log(mu+1/2) - cp.log(cp.arange(1,mu+1))
     self.weights = self.weights/cp.sum(self.weights)
     mu_w = 1/cp.sum(self.weights**2)
@@ -210,7 +210,6 @@ class CMA_ES():
     c_covariance = (4 + mu_w/self.param_dimensionality)/(self.param_dimensionality + 4 + 2*mu_w/self.param_dimensionality) # c_covariance * 100 not working
     c_mu = min([1-c_1,2*(mu_w - 2 + 1/mu_w)/(((self.param_dimensionality+2)**2)+mu_w)])
 
-    mu //= self.hp_loops_number
     
     file = open("PARAMS.txt", "w")
     file.write("c_1: " + str(c_1) + "\n")
@@ -241,7 +240,9 @@ class CMA_ES():
       self.update_sigma(c_sigma,d_sigma)
       self.population.sample(self.B_matrix, self.D_matrix, self.sigma, mean_act, lam)
       self.population.parse_from_vectors()
+      if self._loops_number == self.hp_loops_number:
+        self._loops_number = 0
       file = open("LOGS.txt", "a")
-      file.write("\n\n")
+      file.write(str(self._loops_number) + "\n\n")
       file.close()
     return self.population
