@@ -12,11 +12,11 @@ def cuda_memory_clear():
 
 
 class CMA_ES():
-  def __init__(self,population,sigma,evaluate_func, logs, dimensionality = None, param_dimensionality = None, number_of_cage = None):
+  def __init__(self,population,sigma,evaluate_func, logs, dimensionality = None, param_dimensionality = None, number_of_cage = None, hp_loops_number = 0):
     file = open("LOGS.txt",'w')
     file.close()
-    self._loops_number = 0
-    self.hp_loops_number = 0
+    self._loops_number = 1
+    self.hp_loops_number = self._loops_number + hp_loops_number
     self.dimensionality = None
     self.param_dimensionality = None
     if dimensionality == None:
@@ -36,9 +36,16 @@ class CMA_ES():
     
     cuda_memory_clear()
     self.population = population
+
     self.sigma = sigma
+    self.d_sigma = 0
+
     self.isotropic = cp.zeros(self.dimensionality, dtype = cp.float32) #check it
+    self.d_isotropic = cp.zeros(self.dimensionality, dtype = cp.float32) #check it
+    
     self.anisotropic = cp.zeros(self.dimensionality, dtype = cp.float32) #check it
+    self.d_anisotropic = cp.zeros(self.dimensionality, dtype = cp.float32) #check it
+
     self.evaluate_func = evaluate_func
     self.weights = 0 #0 is just placeholder
     self.logs = logs
@@ -66,20 +73,24 @@ class CMA_ES():
   def update_isotropic(self,mean_act,mean_prev,c_sigma,mu_w):
     file = open("LOGS.txt", "a")
 
-    first_term = cp.float64(1-c_sigma)*self.isotropic
+    first_term = cp.float32(1-c_sigma)*self.isotropic
 
     second_term = (cp.sqrt(1-((1-c_sigma)**2))*cp.sqrt(mu_w)).astype(cp.float32)
     third_term = (cp.array(mean_act, dtype = cp.float32)-cp.array(mean_prev, dtype=cp.float32))/cp.array(self.sigma, dtype=cp.float32)
     ret_val = first_term + second_term*self.invert_sqrt_covariance_matrix.dot(third_term)
 
-    
+
     file.write("\n  " 
                 + "first term: " + str(first_term.dtype) + "\n"
                 + "second term: " + str(second_term.dtype) + "\n"
                 + "third_term: " + str(third_term.dtype) + "\n"
               )
     file.close()
-    self.isotropic = ret_val
+    self.d_isotropic += second_term*self.invert_sqrt_covariance_matrix.dot(third_term)
+    if self.hp_loops_number == self._loops_number:
+      self.isotropic = (1-c_sigma)*self.isotropic + self.d_isotropic/self.hp_loops_number
+      self.isotropic = self.isotropic.astype(cp.float32)
+      self.d_isotropic = cp.zeros(self.dimensionality, dtype = cp.float32)
   
   def compute_cs(self, alpha, c_1, c_covariance):
     ret_val = (1 - self._indicator_function(cp.sqrt(cp.sum(self.isotropic ** 2)), alpha)) * c_1 * c_covariance * (2 - c_covariance)
@@ -105,7 +116,13 @@ class CMA_ES():
                 + "true ret val: " + str(true_ret_val.dtype) + "\n"
                 )
     file.close()
-    self.anisotropic = true_ret_val
+
+    self.d_anisotropic += ret_val2 + ret_val3
+    if self.hp_loops_number == self._loops_number:
+      self.anisotropic = (1 - c_covariance)*self.anisotropic + self.d_anisotropic/self.hp_loops_number
+      self.d_anisotropic = cp.zeros(self.dimensionality, dtype = cp.float32) 
+      self.anisotropic = self.anisotropic.astype(cp.float32)
+
   
   def _sum_for_covariance_matrix_update(self, scores, sorted_indices, mu, mean_prev): #jakas almbda potrzebna chyba
     interesting_values = sorted_indices[:mu]
@@ -127,13 +144,14 @@ class CMA_ES():
     file.write( " Przed pajacowaniem: dtype: "
                 + str(self.covariance_matrix.dtype)
                 )
-    discount_factor = 1 - c_1 - c_mu + c_s
+    discount_factor = 1 - (c_1 - c_mu + c_s)/self.hp_loops_number
     C1 = discount_factor.astype(cp.float32) * self.covariance_matrix
     C2 = (c_1 * (self.anisotropic.reshape(-1,1).dot(self.anisotropic.reshape(1,-1)))).astype(cp.float32)
     C3 = (c_mu * self._sum_for_covariance_matrix_update(scores, sorted_indices, mu, mean_prev)).astype(cp.float32)
     
 
-    self.covariance_matrix = C1 + C2 + C3
+    self.covariance_matrix = C1 + (C2 + C3)/self.hp_loops_number
+    self.covariance_matrix = self.covariance_matrix.astype(cp.float32)
     if self._loops_number == self.hp_loops_number:
       self.covariance_matrix = cp.triu(self.covariance_matrix) + cp.triu(self.covariance_matrix,1).T
       self._loops_number = 0
