@@ -12,7 +12,7 @@ def cuda_memory_clear():
 
 
 class CMA_ES():
-  def __init__(self,population,sigma,evaluate_func, logs, dimensionality = None, param_dimensionality = None, number_of_cage = None, hp_loops_number = 0):
+  def __init__(self,population,sigma,evaluate_func, logs, dimensionality = None, param_dimensionality = None, number_of_cage = None, hp_loops_number = 0, patience = None):
     file = open("LOGS.txt",'w')
     file.close()
     self._loops_number = 1
@@ -38,7 +38,16 @@ class CMA_ES():
     self.population = population
 
     self.sigma = sigma
-    self.d_sigma = 1
+    self.delta_sigma = 1
+
+
+    #sigma heurestics
+    self.patience = patience * self.hp_loops_number
+    self.starting_sigma = self.sigma
+    self.sigma_drop = 499/500
+    self.best_validation = 0
+    self.should_heat_up = False
+    self.iterations_without_improvment = 0
 
     self.isotropic = cp.zeros(self.dimensionality, dtype = cp.float32) #check it
     self.d_isotropic = cp.zeros(self.dimensionality, dtype = cp.float32) #check it
@@ -180,10 +189,31 @@ class CMA_ES():
                 + "temp2: " + str(temp2.dtype) + "\n"
                 + "ret_val: " + str(ret_val.dtype) + "\n")
     file.close()
-    d_sigma *= temp2.item()
+    self.delta_sigma *= temp2.item()
     if self.hp_loops_number == self._loops_number:
-      self.sigma *= cp.power(d_sigma, 1/(self._loops_number), dtype = cp.float32).item()
-      d_sigma = 1
+      self.sigma *= cp.power(self.delta_sigma, 1/(self.hp_loops_number), dtype = cp.float32).item()
+      self.delta_sigma = 1
+
+  #set self.patence *= hp_param
+  def update_sigma_heurestic(self,validation_score):
+    if self.best_validation < validation_score:
+      self.best_validation = validation_score
+      self.should_heat_up = False
+      self.delta_sigma *= self.sigma_drop
+      self.iterations_without_improvment = 0
+    else:
+      self.iterations_without_improvment += 1
+    if self.iterations_without_improvment >= self.patience:
+      self.iterations_without_improvment = 0
+      if self.should_heat_up:
+        self.sigma = self.starting_sigma
+        self.should_heat_up = False
+      else:
+        self.sigma *= self.sigma_drop ^ 100
+        self.should_heat_up = True
+    if self.hp_loops_number == self._loops_number:
+      self.sigma *= cp.power(self.delta_sigma, 1/(self.hp_loops_number), dtype = cp.float32).item()
+      self.delta_sigma = 1
 
 
 
@@ -236,7 +266,10 @@ class CMA_ES():
       c_s = self.compute_cs(alpha,c_1,c_covariance)
       self.update_anisotropic(mean_act,mean_prev,mu_w,c_covariance,alpha)
       self.update_covariance_matrix(c_1,c_mu,c_s,train_scores,sorted_indices,mu,mean_prev)
-      self.update_sigma(c_sigma,d_sigma)
+      if self.patience == None:
+        self.update_sigma(c_sigma,d_sigma)
+      else:
+        self.update_sigma_heurestic(cp.max(validation_scores))
       self.population.sample(self.B_matrix, self.D_matrix, self.sigma, mean_act, lam)
       self.population.parse_from_vectors()
       if self._loops_number == self.hp_loops_number:
