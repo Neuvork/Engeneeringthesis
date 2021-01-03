@@ -31,7 +31,7 @@ max_pooling_kernel_paralell = cp.RawKernel(
       int i = blockIdx.y;
       int j = blockIdx.x;
       int k = threadIdx.x;
-      float maxi = 0.;
+      float maxi = -10000.;
 
       for(int temp_j = j*2; temp_j < min(j*2 + 2, temp_s1) ; temp_j++)
       {
