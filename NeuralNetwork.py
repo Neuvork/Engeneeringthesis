@@ -171,6 +171,7 @@ class Neural_Network:
   def forward(self, state):
     layer_num = 0
     temp = state.copy()
+    first_lin = 0
     for layer in self.layers:
       if layer[0]=='conv':
         if layer_num == 0:
@@ -179,6 +180,16 @@ class Neural_Network:
           temp = convolve_cuda_paralell_many_inputs(temp, layer[1])
         temp = max_pooling_cuda_paralell(temp)
       if layer[0]=='linear':
+        if first_lin == 0:
+          first_lin = 1
+          prev_shape = temp.shape
+          proper_eng = cp.zeros(shape=(prev_shape[0], prev_shape[2], prev_shape[3], prev_shape[1]), dtype = cp.float32)
+          #zadziala dla jednej warstwy conv bez input filterow
+          for i in range(temp.shape[1]):
+            for j in range(temp.shape[2]):
+              for k in range(temp.shape[3]):
+                proper_eng[0, j, k, i] = temp[0, i, j, k]
+          temp = proper_eng
         temp = temp.flatten()
         if layer_num ==0:
           temp = dot_cuda_paralell(temp, layer[1])
