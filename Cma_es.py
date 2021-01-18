@@ -42,7 +42,9 @@ class CMA_ES():
 
 
     #sigma heurestics
-    self.patience = patience * self.hp_loops_number
+    self.patience = patience
+    if self.patience != None:
+      self.patience *= self.hp_loops_number
     self.starting_sigma = self.sigma
     self.sigma_drop = 499/500
     self.best_validation = 0
