@@ -183,13 +183,6 @@ class Neural_Network:
         if first_lin == 0:
           first_lin = 1
           prev_shape = temp.shape
-          proper_eng = cp.zeros(shape=(prev_shape[0], prev_shape[2], prev_shape[3], prev_shape[1]), dtype = cp.float32)
-          #zadziala dla jednej warstwy conv bez input filterow
-          for i in range(temp.shape[1]):
-            for j in range(temp.shape[2]):
-              for k in range(temp.shape[3]):
-                proper_eng[0, j, k, i] = temp[0, i, j, k]
-          temp = proper_eng
         temp = temp.flatten()
         if layer_num ==0:
           temp = dot_cuda_paralell(temp, layer[1])

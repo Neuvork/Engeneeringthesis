@@ -181,7 +181,7 @@ class CMA_ES():
     return cp.sqrt(cp.sum(vector*vector))
 
   def update_sigma(self,c_sigma,d_sigma):
-    temp = cp.sqrt(self.dimensionality, dtype = cp.float32)*(1-(1/(4*self.param_dimensionality)) + (1/(21*self.param_dimensionality**2)))
+    temp = cp.sqrt(self.param_dimensionality, dtype = cp.float32)*(1-(1/(4*self.param_dimensionality)) + (1/(21*self.param_dimensionality**2)))
 
     temp2 = cp.exp((c_sigma/d_sigma)*((self.norm(self.isotropic)/temp)-1)).astype(cp.float32)
     ret_val = cp.float32(self.sigma) * temp2
