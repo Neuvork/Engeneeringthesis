@@ -81,7 +81,7 @@ class Neural_Network:
         if type(input_size) == int:
           layers.append(('bias', [num_nets] + [input_size]))
         else:
-          layers.append(('bias', [num_nets] + list(input_size)))
+          layers.append(('bias', [num_nets, input_size[0], 1, 1] ))
       iterator += 1
       
       
@@ -182,7 +182,6 @@ class Neural_Network:
       if layer[0]=='linear':
         if first_lin == 0:
           first_lin = 1
-          prev_shape = temp.shape
         temp = temp.flatten()
         if layer_num ==0:
           temp = dot_cuda_paralell(temp, layer[1])
