@@ -65,6 +65,10 @@ class Logs():
       #idx = (int(np.floor(it/sizes[1])),int(it%sizes[1]))
       fig = plt.figure(figsize = (24,20))
       ax = fig.add_subplot(111)
+      ax.tick_params(axis='both', which='major', labelsize=20)
+      ax.tick_params(axis='both', which='minor', labelsize=20)
+      ax.locator_params(tight=True, nbins=30)
+      
       if log[0] == 'number':
         ax.plot(np.arange(len(self.logs[it])),self.logs[it])
       if log[0] == 'matrix':
