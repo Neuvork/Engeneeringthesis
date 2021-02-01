@@ -249,6 +249,7 @@ class CMA_ES():
     file.write("c_sigma: " + str(c_sigma) + "\n")
     file.write("d_sigma: " + str(d_sigma) + "\n")
     file.write("c_covariance: " + str(c_covariance) + "\n")
+    file.write("mu_w: " + str(mu_w) + "\n")
     file.close()
     
     alpha = 1.5
