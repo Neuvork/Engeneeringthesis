@@ -174,7 +174,7 @@ class Neural_Network:
     first_lin = 0
     for layer in self.layers:
       if layer[0]=='conv':
-        if layer_num == 0:
+        if layer_num == 0 and False:
           temp = convolve_cuda_paralell(temp, layer[1])
         else:
           temp = convolve_cuda_paralell_many_inputs(temp, layer[1])
