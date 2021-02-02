@@ -228,7 +228,6 @@ class CMA_ES():
     self.weights = cp.log(mu+1/2) - cp.log(cp.arange(1,mu+1))
     self.weights = self.weights/cp.sum(self.weights)
     mu_w = 1/cp.sum(self.weights**2)
-    
     #dimension = 7840
     #c_sigma = (mu_w + 2)/(dimension + mu_w + 5)
     #d_sigma = 1 + 2*max([0,cp.sqrt((mu_w - 1)/(dimension + 1)) - 1]) + c_sigma #dampening parameter could probably be hyperparameter, wiki says it is close to 1 so whatever
@@ -278,6 +277,109 @@ class CMA_ES():
       if self._loops_number == self.hp_loops_number:
         self._loops_number = 0
       self._loops_number += 1
+      file = open("LOGS.txt", "a")
+      file.write(str(self._loops_number) + "\n\n")
+      file.close()
+    return self.population
+
+
+  #MARIO
+  def merge_populations(self,children_population,children_scores,parent_scores):
+    #here population is in vectorized form!
+    sorted_indices_children = cp.argsort(-children_scores)
+    sorted_indices_parent = cp.argsort(-parent_scores)
+    children_iterator,parent_iterator = 0,0
+    scores = cp.zeros(self.population.population_size)
+    dummy_population = Neural_Network(self.population.population_size,  (3, 240, 256), 
+                            [
+                             ['conv', (3, 3, 3), [1.,1.]],
+                             ['conv', (3, 3, 3), [1.,1.]],
+                             ['conv', (3, 3, 3), [1.,1.]],
+                             ['conv', (3, 3, 3), [1.,1.]],
+                             ['linear', 7, [1.,1.]]
+                             ],
+                            )
+    dummy_population.parse_to_vector()
+    #fuck that, no idea how to do it nicely, we have to create new dummy population each time
+    for i in range(self.population.population_size):
+      children_index = sorted_indices_children[children_iterator]
+      parent_index = sorted_indices_parent[parent_iterator]
+      children_score = children_scores[children_index]
+      parent_score = parent_scores[parent_index]
+      if children_score > parent_score:
+        dummy_population.matrix[i] = cp.copy(children_population.matrix[children_index])
+        scores[i] = children_scores[children_index]
+        children_iterator += 1
+      else:
+        dummy_population.matrix[i] = cp.copy(self.population.matrix[parent_index])
+        scores[i] = parent_scores[parent_index]
+        parent_iterator += 1
+    self.population.matrix = cp.copy(dummy_population.matrix) #motherfucker trick
+    return scores,cp.zeros(self.population.population_size)
+
+
+  def fit_mario_plus(self,data,mu,lam,iterations,children_population):
+    mean_act = cp.zeros(self.dimensionality)
+    mu //= self.hp_loops_number
+    self.weights = cp.log(mu+1/2) - cp.log(cp.arange(1,mu+1))
+    self.weights = self.weights/cp.sum(self.weights)
+    mu_w = 1/cp.sum(self.weights**2)
+    mu_w /= 10
+
+    c_1 = 2/(self.param_dimensionality**2)
+    c_sigma = (mu_w + 2)/(self.param_dimensionality + mu_w + 5)
+    d_sigma = 1 + 2*max([0,cp.sqrt((mu_w - 1)/(self.param_dimensionality + 1)) - 1]) + c_sigma #dampening parameter could probably be hyperparameter, wiki says it is close to 1 so whatever
+    c_covariance = (4 + mu_w/self.param_dimensionality)/(self.param_dimensionality + 4 + 2*mu_w/self.param_dimensionality) # c_covariance * 100 not working
+    c_mu = min([1-c_1,2*(mu_w - 2 + 1/mu_w)/(((self.param_dimensionality+2)**2)+mu_w)])
+
+    
+    file = open("PARAMS.txt", "w")
+    file.write("c_1: " + str(c_1) + "\n")
+    file.write("c_mu: " + str(c_mu) + "\n")
+    file.write("c_sigma: " + str(c_sigma) + "\n")
+    file.write("d_sigma: " + str(d_sigma) + "\n")
+    file.write("c_covariance: " + str(c_covariance) + "\n")
+    file.write("mu_w: " + str(mu_w) + "\n")
+    file.close()
+    
+    alpha = 1.5
+    #preloop eval
+    train_scores_parents, validation_scores_parents = self.evaluate_func(self.population, data)
+    self.population.parse_to_vector()
+    #body 
+    for i in range(iterations):
+      #sample children
+      children_population.sample(self.B_matrix, self.D_matrix, self.sigma, mean_act, lam)
+      children_population.parse_from_vectors()
+
+      #eval children
+      train_scores_children, validation_scores_children = self.evaluate_func(children_population, data)
+
+      #merge children and parent
+      children_population.parse_to_vector()
+      train_scores,validation_scores = self.merge_populations(children_population,train_scores_children,train_scores_parents)
+      #bad moment here assignment to self.population can crash (dunno)
+      #standard part of loop
+      sorted_indices = cp.argsort(-train_scores)
+      mean_prev = mean_act.copy()
+      
+
+      #update
+      print("___bedzie udpate mean")
+      mean_act = self.update_mean(train_scores,sorted_indices,mu) #we need to be vectorized here
+      print("___bedzie logs log")
+      self.logs.log([self.covariance_matrix,self.population.matrix,self.sigma,self.isotropic,self.anisotropic,
+                      mean_prev,cp.max(train_scores), cp.max(validation_scores),mean_act-mean_prev])
+      self.logs.plot()
+      self.update_isotropic(mean_act,mean_prev,c_sigma,mu_w)
+      c_s = self.compute_cs(alpha,c_1,c_covariance)
+      self.update_anisotropic(mean_act,mean_prev,mu_w,c_covariance,alpha)
+      self.update_covariance_matrix(c_1,c_mu,c_s,train_scores,sorted_indices,mu,mean_prev)
+      if self.patience == None:
+        self.update_sigma(c_sigma,d_sigma)
+      else:
+        self.update_sigma_heurestic(cp.max(validation_scores))
+      #finish
       file = open("LOGS.txt", "a")
       file.write(str(self._loops_number) + "\n\n")
       file.close()
