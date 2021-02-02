@@ -357,7 +357,9 @@ class CMA_ES():
 
       #merge children and parent
       children_population.parse_to_vector()
-      train_scores,validation_scores = self.merge_populations(children_population,train_scores_children,train_scores_parents)
+      train_scores_parents,validation_scores_parents = self.merge_populations(children_population,train_scores_children,train_scores_parents)
+      train_scores = train_scores_parents
+      validation_scores = validation_scores_parents
       #bad moment here assignment to self.population can crash (dunno)
       #standard part of loop
       sorted_indices = cp.argsort(-train_scores)
