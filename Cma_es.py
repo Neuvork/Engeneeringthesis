@@ -290,16 +290,7 @@ class CMA_ES():
     sorted_indices_parent = cp.argsort(-parent_scores)
     children_iterator,parent_iterator = 0,0
     scores = cp.zeros(self.population.population_size)
-    dummy_population = Neural_Network(self.population.population_size,  (3, 240, 256), 
-                            [
-                             ['conv', (3, 3, 3), [1.,1.]],
-                             ['conv', (3, 3, 3), [1.,1.]],
-                             ['conv', (3, 3, 3), [1.,1.]],
-                             ['conv', (3, 3, 3), [1.,1.]],
-                             ['linear', 7, [1.,1.]]
-                             ],
-                            )
-    dummy_population.parse_to_vector()
+    dummy_population = cp.zeros(children_population.matrix.shape,dtype = cp.float32)
     #fuck that, no idea how to do it nicely, we have to create new dummy population each time
     for i in range(self.population.population_size):
       children_index = sorted_indices_children[children_iterator]
@@ -307,14 +298,14 @@ class CMA_ES():
       children_score = children_scores[children_index]
       parent_score = parent_scores[parent_index]
       if children_score > parent_score:
-        dummy_population.matrix[i] = cp.copy(children_population.matrix[children_index])
+        dummy_population[i] = cp.copy(children_population.matrix[children_index])
         scores[i] = children_scores[children_index]
         children_iterator += 1
       else:
-        dummy_population.matrix[i] = cp.copy(self.population.matrix[parent_index])
+        dummy_population[i] = cp.copy(self.population.matrix[parent_index])
         scores[i] = parent_scores[parent_index]
         parent_iterator += 1
-    self.population.matrix = cp.copy(dummy_population.matrix) #motherfucker trick
+    self.population.matrix = cp.copy(dummy_population) #motherfucker trick
     return scores,cp.zeros(self.population.population_size)
 
 
