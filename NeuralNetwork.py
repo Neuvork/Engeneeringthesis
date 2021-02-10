@@ -19,7 +19,7 @@ class Neural_Network:
     self.vectorized = False 
     self.layers = [] 
     self.matrix = None
-    self.layers_shapes = self.parse_input(given_layers,input_size,num_nets)
+    self.layers_shapes, self.input_sizes  = self.parse_input(given_layers,input_size,num_nets)
     self.dimensionality = self.compute_dimensionality()
     self.cage_dimensionalities = cage_dimensionalities
     for layer in self.layers_shapes:
@@ -51,12 +51,13 @@ class Neural_Network:
     self.vectorized = True
 
   def list_memory_clear(self, lista):
-    for i in range(len(lista)):
+    for _ in range(len(lista)):
       del lista[0]
 
   def parse_input(self,given_layers,input_size,num_nets):
     layers = []
     input_size = (input_size[0],input_size[1],input_size[2])
+    input_sizes = []
 
     iterator = 1
     for layer in given_layers:
@@ -83,11 +84,12 @@ class Neural_Network:
           layers.append(('bias', [num_nets] + [input_size]))
         else:
           layers.append(('bias', [num_nets, input_size[0], 1, 1] ))
+          input_sizes.append([num_nets] + list(input_size))
       iterator += 1
       
       
     print("layers: ", layers)
-    return layers
+    return layers, input_sizes
   
   def compute_dimensionality(self):
     number_of_weights = 0
