@@ -137,7 +137,7 @@ conv_kernel_paralell = cp.RawKernel(
 )
 
 def max_pooling_cuda_paralell(temp):
-    ret_mat = cp.zeros((temp.shape[0], temp.shape[1], int(cp.ceil(temp.shape[2]/2)), int(cp.ceil(temp.shape[3]/2))), dtype = cp.float32)
+    ret_mat = cp.zeros((temp.shape[0], temp.shape[1], int(cp.floor(temp.shape[2]/2)), int(cp.floor(temp.shape[3]/2))), dtype = cp.float32)
     block_size = (ret_mat.shape[3],1)
     grid_size =  (ret_mat.shape[2], ret_mat.shape[1], ret_mat.shape[0])
     max_pooling_kernel_paralell(grid_size, block_size, (ret_mat, temp, temp.shape[2], temp.shape[3], temp.shape[1]))
