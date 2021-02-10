@@ -65,6 +65,7 @@ class Neural_Network:
 
       if layer[0] == 'conv':
         layers.append((layer[0],[num_nets,layer[1][0],input_size[0],layer[1][1],layer[1][2]]))
+        input_sizes.append("placeholder")
         input_size = (layer[1][0],input_size[1]-layer[1][1]+1,input_size[2]-layer[1][2]+1)
         input_size = (input_size[0],np.floor(input_size[1]/2),np.floor(input_size[2]/2))
         input_size = tuple(map(lambda x:int(x), input_size))
@@ -77,11 +78,13 @@ class Neural_Network:
           temp = reduce( lambda a,b: a*b, input_size)
         input_size = int(temp)
         layers.append((layer[0],[num_nets,input_size,layer[1]]))
+        input_sizes.append("placeholder")
         input_size = layer[1]
 
       if iterator != len(given_layers):
         if type(input_size) == int:
           layers.append(('bias', [num_nets] + [input_size]))
+          input_sizes.append( [num_nets] + [input_size])
         else:
           layers.append(('bias', [num_nets, input_size[0], 1, 1] ))
           input_sizes.append([num_nets] + list(input_size))
