@@ -10,21 +10,21 @@ DEBUG_MODE = only_interesting
 class Neural_Network:
 
 
-  def __init__(self,num_nets,input_size,given_layers,loc=0,scale=1, cage_dimensionalities = None):#after init in neuronized state
+  def __init__(self,num_nets,input_size,given_layers,loc=0,scale=1, cage_dimensionalities = None):
     self.mempool = cp.get_default_memory_pool()
     self.pinned_mempool = cp.get_default_memory_pool()
     self.population_size = num_nets
     self.input_size = input_size
     self.input_layers = given_layers
-    self.vectorized = False #if NN is in state of being vectorized or neuronized
-    self.layers = [] #empty if in vectorized,neural network if in neuronized
-    self.matrix = None #empty if in neuronized, vector if in vectorized
-    self.layers_shapes = self.parse_input(given_layers,input_size,num_nets) #remember the shape of network,and parse user input
+    self.vectorized = False 
+    self.layers = [] 
+    self.matrix = None
+    self.layers_shapes = self.parse_input(given_layers,input_size,num_nets)
     self.dimensionality = self.compute_dimensionality()
     self.cage_dimensionalities = cage_dimensionalities
     for layer in self.layers_shapes:
       if layer[0] == 'conv':
-        self.layers.append(['conv', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])   #layer[0] -> conv ; layer[1] ->[num_nets, out_channel, in_channel, filter_wdth, filter_height]
+        self.layers.append(['conv', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])
       if layer[0] == 'linear':
         self.layers.append(['linear', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)]) 
       if layer[0] == 'bias':
@@ -33,9 +33,10 @@ class Neural_Network:
 
   def cuda_memory_clear(self):
     self.mempool.free_all_blocks()
-    self.pinned_mempool.free_all_blocks()          
+    self.pinned_mempool.free_all_blocks()    
 
-  def parse_to_vector(self): # every individual is getting trapnsfered to vector
+  # every individual is getting trapnsfered to vector
+  def parse_to_vector(self): 
     ret_mat = np.zeros((self.population_size, self.dimensionality),dtype = np.float32)
     index = 0
     for layer in self.layers:
@@ -99,14 +100,12 @@ class Neural_Network:
 
 
   def sample(self,B,D, sigma, mean, lam):
-    self.layers = [] #cleaning previous population
+    self.layers = []
     self.cuda_memory_clear()
     #concat sampled vectors and parse them
     ret_mat = cp.zeros((lam, self.dimensionality),dtype = cp.float32)
-    #L = cp.linalg.cholesky(covariance_matrix*(sigma**2)).astype(cp.float32)
     for i in range(lam):
       ret_mat[i] = self.multivariate_cholesky(mean,B,D,sigma)
-      #ret_mat[i] = cp.random.multivariate_normal(mean, covariance_matrix * (sigma**2))
       self.cuda_memory_clear()
     self.matrix = ret_mat
     self.vectorized = True
@@ -117,13 +116,10 @@ class Neural_Network:
     return ret_val
 
   def caged_sample(self,Bs,Ds, sigmas, means, lam):
-    self.layers = [] #cleaning previous population
+    self.layers = []
     self.cuda_memory_clear()
     #concat sampled vectors and parse them
     ret_mat = cp.zeros((lam, self.dimensionality),dtype = cp.float32)
-    #L = []
-    #for i in range(len(self.cage_dimensionalities)):
-    #  L.append(cp.linalg.cholesky(covariance_matrices[i]*(sigmas[i]**2)).astype(cp.float32))
     for i in range(lam):
       ret_mat[i] = self.caged_multivariate_cholesky(means,Bs,Ds,sigmas)
     self.cuda_memory_clear()
@@ -200,7 +196,6 @@ class Neural_Network:
       self.list_memory_clear(individual)
     del individual
 
-#self.cage dimensionalities 
   def return_chosen_ones(self, indices, number_of_cage = None):
     if not self.vectorized:
         self.parse_to_vector()

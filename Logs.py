@@ -19,9 +19,6 @@ class Logs():
       self.output_dir.append("drive/MyDrive/pictures/" + t[1] + "/")
       self.mkdir_p(self.output_dir[it])
       if t[0] == 'custom':
-        file = open("Logs_log.txt", "a")
-        file.write("Adding custom plot " + str(t))
-        file.close()
         self.customs[it] = custom_functions[customs_iter]
         customs_iter += 1
   
@@ -62,7 +59,6 @@ class Logs():
   def plot(self):
     clear_output()
     for log,it in zip(self.types,np.arange(len(self.types))):
-      #idx = (int(np.floor(it/sizes[1])),int(it%sizes[1]))
       fig = plt.figure(figsize = (24,20))
       ax = fig.add_subplot(111)
       ax.tick_params(axis='both', which='major', labelsize=20)
@@ -84,5 +80,3 @@ class Logs():
       fig.savefig(self.output_dir[it] + log[1] + str(self.counter))
       plt.show()
     self.counter += 1
-    #fig.tight_layout()
-    #plt.show()

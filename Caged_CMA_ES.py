@@ -77,8 +77,8 @@ class Caged_CMA_ES():
       mean = np.concatenate((mean, cp.asnumpy(mean_act[i])))
     return [cov, sigmas, isotropic, anisotropic, mean, cp.max(validation_scores), cp.max(validation_scores)]
 
-
-  def fit(self, data, mu, lam, iterations): # mu is how many best samples from population, lam is how much we generate
+# mu is how many best samples from population, lam is how much we generate
+  def fit(self, data, mu, lam, iterations): 
     for i in range(self.number_of_cages):
       self.cages[i].weights = cp.log(mu+1/2) - cp.log(cp.arange(1,mu+1))
       self.cages[i].weights = self.cages[i].weights/cp.sum(self.cages[i].weights)
@@ -96,8 +96,9 @@ class Caged_CMA_ES():
     for i in range(self.number_of_cages):
       c_1[i] = 2/(self.params_dimensionalities[i]**2)
       c_sigma[i] = (mu_w + 2)/(self.params_dimensionalities[i] + mu_w + 5)
-      d_sigma[i] = 1 + 2*max([0,cp.sqrt((mu_w - 1)/(self.params_dimensionalities[i] + 1)) - 1]) + c_sigma[i] #dampening parameter could probably be hyperparameter, wiki says it is close to 1 so whatever
-      c_covariance[i] = (4 + mu_w/self.params_dimensionalities[i])/(self.params_dimensionalities[i] + 4 + 2*mu_w/self.params_dimensionalities[i]) # c_covariance * 100 not working
+      #dampening parameter could probably be hyperparameter, wiki says it is close to 1 so whatever
+      d_sigma[i] = 1 + 2*max([0,cp.sqrt((mu_w - 1)/(self.params_dimensionalities[i] + 1)) - 1]) + c_sigma[i] 
+      c_covariance[i] = (4 + mu_w/self.params_dimensionalities[i])/(self.params_dimensionalities[i] + 4 + 2*mu_w/self.params_dimensionalities[i])
       c_mu[i] = min([1-c_1[i],2*(mu_w - 2 + 1/mu_w)/(((self.params_dimensionalities[i]+2)**2)+mu_w)])
       
       
@@ -107,25 +108,15 @@ class Caged_CMA_ES():
     mean_prev = self.set_mean_act()
     c_s = self.set_cs()
 
-    file = open("PARAMS.txt", "w")
-    file.write("c_1: " + str(c_1) + "\n \n")
-    file.write("c_mu: " + str(c_mu) + "\n")
-    file.write("c_sigma: " + str(c_sigma) + "\n \n")
-    file.write("d_sigma: " + str(d_sigma) + "\n \n")
-    file.write("c_covariance: " + str(c_covariance) + "\n")
-    file.write("mu_w: " + str(mu_w) + "\n")
-    file.write("problem_mu_w: " + str(problem_mu_w) + "\n")
-    
-    file.close()
 
     #body 
     for i in range(iterations):
       train_scores, validation_scores = self.evaluate_func(self.population, data)
       sorted_indices = cp.argsort(-train_scores)
       for j in range(len(mean_prev)):
-        mean_prev[j] = mean_act[j].copy() #maybe deepcopy
+        mean_prev[j] = mean_act[j].copy()
       self.population.parse_to_vector()
-      mean_act = self.update_mean(train_scores,sorted_indices,mu) #we need to be vectorized here
+      mean_act = self.update_mean(train_scores,sorted_indices,mu)
       self.logs.log(self.parse_log_args(mean_act, train_scores, validation_scores))
       self.logs.plot()
       for j in range(self.number_of_cages):
