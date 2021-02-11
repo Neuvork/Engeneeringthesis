@@ -2,15 +2,11 @@ import cupy as cp
 import numpy as np
 from functools import reduce
 from Engeneeringthesis.kernels import dot_cuda_paralell, max_pooling_cuda_paralell, convolve_cuda_paralell, dot_cuda_paralell_many_inputs, convolve_cuda_paralell_many_inputs
-no_debug = 1
-basic_debug_mode = 2
-super_debug_mode = 3
-only_interesting = 5
-DEBUG_MODE = only_interesting
+
 class Neural_Network:
 
 
-  def __init__(self,num_nets,input_size,given_layers,loc=0,scale=1, cage_dimensionalities = None):
+  def __init__(self,num_nets,input_size,given_layers,loc=0,scale=1, cage_dimensionalities = None, use_bias=True):
     self.mempool = cp.get_default_memory_pool()
     self.pinned_mempool = cp.get_default_memory_pool()
     self.population_size = num_nets
@@ -22,6 +18,7 @@ class Neural_Network:
     self.layers_shapes, self.input_sizes  = self.parse_input(given_layers,input_size,num_nets)
     self.dimensionality = self.compute_dimensionality()
     self.cage_dimensionalities = cage_dimensionalities
+    self.use_bias = use_bias
     for layer in self.layers_shapes:
       if layer[0] == 'conv':
         self.layers.append(['conv', cp.random.normal(loc = loc, scale = scale, size = layer[1]).astype(cp.float32)])
@@ -189,7 +186,8 @@ class Neural_Network:
         else:
           temp = dot_cuda_paralell_many_inputs(temp, layer[1])
       if layer[0] == 'bias':
-        temp += layer[1]
+        if self.use_bias:
+           temp += layer[1]
         temp = cp.tanh(temp, dtype = cp.float32)
       layer_num += 1
     return cp.argmax(temp, axis = 1)
