@@ -145,7 +145,9 @@ def max_pooling_cuda_paralell(temp):
 
 def convolve_cuda_paralell_many_inputs(temp, conv):
     #int temp_s1, int temp_s2, int temp_s3, int conv_s1, int conv_s2, int filtersize
-    ret_mat = cp.zeros((temp.shape[0] , conv.shape[1], temp.shape[2] - 2, temp.shape[3] - 2), dtype = cp.float32)
+    filter_reducer1 = conv.shape[3] - 1
+    filter_reducer2 = conv.shape[4] - 1
+    ret_mat = cp.zeros((temp.shape[0] , conv.shape[1], temp.shape[2] - filter_reducer1, temp.shape[3] - filter_reducer2), dtype = cp.float32)
     block_size = (ret_mat.shape[3], 1)
     grid_size =  (ret_mat.shape[0], ret_mat.shape[1], ret_mat.shape[2])
     conv_kernel_paralell_many_inputs(grid_size, block_size, (ret_mat, temp, conv,temp.shape[1], temp.shape[2], temp.shape[3], conv.shape[1], conv.shape[2], 3))

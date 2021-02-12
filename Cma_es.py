@@ -2,7 +2,6 @@ import cupy as cp
 import numpy as np
 from Engeneeringthesis.Logs import Logs 
 from Engeneeringthesis.NeuralNetwork import Neural_Network
-from scipy.linalg import sqrtm
 
 mempool = cp.get_default_memory_pool()
 pinned_mempool = cp.get_default_pinned_memory_pool()
