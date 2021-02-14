@@ -259,7 +259,7 @@ class CMA_ES():
       mean_prev = mean_act.copy()
       self.population.parse_to_vector()
       if max_score < cp.max(train_scores):
-        cp.save("drive/MyDrive/population/population.npy", population.matrix, allow_pickle=False)
+        cp.save("drive/MyDrive/population/population.npy", self.population.matrix, allow_pickle=False)
       print("___bedzie udpate mean")
       mean_act = self.update_mean(train_scores,sorted_indices,mu) #we need to be vectorized here
       print("___bedzie logs log")
