@@ -24,7 +24,7 @@ class Neural_Network:
     self.cage_dimensionalities = cage_dimensionalities
     for layer in self.layers_shapes:
       if layer[0] == 'conv':
-        self.layers.append(['conv', cp.random.normal(loc = 0., scale = .8, size = layer[1]).astype(cp.float32)])   #layer[0] -> conv ; layer[1] ->[num_nets, out_channel, in_channel, filter_wdth, filter_height]
+        self.layers.append(['conv', cp.random.normal(loc = 0., scale = .3, size = layer[1]).astype(cp.float32)])   #layer[0] -> conv ; layer[1] ->[num_nets, out_channel, in_channel, filter_wdth, filter_height]
       if layer[0] == 'linear':
         self.layers.append(['linear', cp.random.normal(loc = 0., scale = .1, size = layer[1]).astype(cp.float32)]) 
       if layer[0] == 'bias':
